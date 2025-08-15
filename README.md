@@ -2,67 +2,82 @@
 
 A complete investment platform with user authentication, product plans, daily income, withdrawals, and recharges.
 
-## Features
+## Features Implemented
 
-### 1. User Authentication
-- Simple Registration & Login with name, mobile number, and password
-- Secure Login with password hashing and JWT tokens
-- One-time registration with persistent login
+### ✅ 1. User Authentication:
+- Simple Registration & Login: Users can easily register and log in with minimal details
+- Secure Login: Passwords are handled securely with JWT tokens for persistent login
+- No complex steps: Just create an account once, and return users can simply log in
 
-### 2. Product Plans
-- Multiple investment plans with different pricing and returns
-- Automatic balance checking before purchase
-- One plan per month rule enforcement
+### ✅ 2. Product Plans:
+- Clear Product List: Users can easily view product plans with clear pricing
+- Simple Purchase Process: Click to buy, and it gets activated in the dashboard
+- One Plan Per Month Rule: Handled in the backend to ensure compliance
 
-### 3. Daily Income
-- Automatic daily income credits to user wallets
-- Duplicate prevention mechanism
+### ✅ 3. Daily Income:
+- Automatic Credits: Users don't need to do anything—daily income is automatically added to their wallet
+- No Duplicates: Each day's income is added once, with no risk of duplicate credits
 
-### 4. Withdrawals
-- Easy withdrawal process with bank or UPI options
-- One withdrawal every 24 hours rule
-- Automatic 5% GST deduction
+### ✅ 4. Withdrawals:
+- Easy Withdrawal Process: Users can request withdrawals with a simple form
+- Simple Rules: Only one withdrawal every 24 hours
+- Instant Status: Users are notified when their withdrawal is approved or rejected
 
-### 5. Recharges
-- UPI payment option with QR code
-- UPI ID copying functionality
-- Payment UTR submission for admin approval
+### ✅ 5. Recharges:
+- Simple Recharge Flow: Users can recharge their wallet with just a UPI payment
+- UPI ID Copying: One-click copy of the entire UPI ID
+- Admin Approval: Recharges require admin approval for security
 
-### 6. Sharing System
-- Referral link generation and copying
+### ✅ 6. Sharing System:
+- Easy Sharing Button: Users can simply click to copy a referral link to share with others
 
-### 7. User Dashboard
-- Clean overview with wallet balance, investments, and withdrawals
-- Real-time status tracking for active plans and transactions
+### ✅ 7. User Dashboard:
+- Clean Overview: A simple dashboard with wallet balance and user information
+- Status Tracking: Users can track their active product plans and transactions
 
-### 8. Marketing Features
-- Fake withdrawal popups for trust building
-- Dynamic marketing statistics
-- Anniversary achievement badges
+### ✅ 8. Marketing Features:
+- Fake Withdrawal Popups: For trust building with random names and amounts
+- Dynamic Marketing Stats: Real-time appearing statistics
+- Anniversary Achievement Badge: Celebrating platform milestones
 
-### 9. Admin Panel
-- Recharge and withdrawal approval
-- User balance adjustments
-- Transaction management
+### ✅ 9. Admin Panel:
+- Minimal Admin Actions: Admin can approve recharges and withdrawals
+- Efficient Management: All user transactions are easily viewable
 
-### 10. Mobile-First Premium UI
-- Responsive design for all devices
-- Clean, minimalistic, and modern interface
-- Smooth animations and intuitive navigation
+### ✅ 10. Mobile-First Premium UI:
+- Responsive Design: Works on smartphones, tablets, and desktops
+- Premium Look: Clean, minimalistic, and modern UI
+- Simple Navigation: Everything is intuitive and easy to find
 
-## Tech Stack
+## Technology Stack
 
-- Frontend: React.js (Hosted on Netlify)
-- Backend: Node.js + Express.js (Hosted on Render)
-- Database: Supabase (PostgreSQL)
-- Authentication: JWT
+- **Frontend**: React.js (Hosted on Netlify)
+- **Backend**: Node.js + Express.js (Hosted on Render)
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: JWT (JSON Web Tokens)
+
+## Deployment Status
+
+- **Frontend**: https://investment-pro-official.netlify.app
+- **Backend**: https://my-fullstack-app-backend-2omq.onrender.com
+
+## Database Schema
+
+The application uses the following tables in Supabase:
+
+1. `users` - Stores user information including name, email, password, mobile, and balance
+2. `product_plans` - Contains investment plan details
+3. `investments` - Tracks user investments in various plans
+4. `withdrawals` - Records withdrawal requests with status tracking
+5. `recharges` - Records recharge requests with UTR numbers
+6. `balance_adjustments` - Logs admin balance adjustments for auditing
 
 ## API Endpoints
 
 ### Authentication
 - `POST /api/register` - User registration
 - `POST /api/login` - User login
-- `GET /api/data` - Get user data (protected)
+- `GET /api/data` - Get authenticated user data
 
 ### Product Plans
 - `GET /api/product-plans` - Get available investment plans
@@ -83,9 +98,20 @@ A complete investment platform with user authentication, product plans, daily in
 - `GET /api/upi-id` - Get UPI ID for payments
 - `GET /api/referral-link` - Generate referral link
 
+### Admin
+- `GET /api/admin/recharges/pending` - Get pending recharges
+- `GET /api/admin/withdrawals/pending` - Get pending withdrawals
+- `POST /api/admin/recharge/:id/approve` - Approve recharge
+- `POST /api/admin/recharge/:id/reject` - Reject recharge
+- `POST /api/admin/withdrawal/:id/approve` - Approve withdrawal
+- `POST /api/admin/withdrawal/:id/reject` - Reject withdrawal
+- `GET /api/admin/users/search` - Search users
+- `POST /api/admin/user/balance-adjust` - Adjust user balance
+
 ## Environment Variables
 
-Create a `.env` file in the backend directory with the following variables:
+### Backend (.env)
+Create a `.env` file in the `backend` directory with the following variables:
 
 ```
 SUPABASE_URL=your_supabase_url
@@ -94,44 +120,68 @@ JWT_SECRET=your_jwt_secret_key
 PORT=5000
 ```
 
-## Deployment
+### Frontend (.env.production)
+The frontend uses environment variables for API configuration:
 
-### Frontend (Netlify)
+```
+REACT_APP_API_URL=https://my-fullstack-app-backend-2omq.onrender.com
+```
+
+## How to Deploy
+
+### 1. Frontend (Netlify)
 1. Connect your GitHub repository to Netlify
 2. Set build command: `cd frontend && npm run build`
 3. Set publish directory: `frontend/build`
+4. Add environment variables as needed
 
-### Backend (Render)
+### 2. Backend (Render)
 1. Connect your GitHub repository to Render
-2. Set environment variables
+2. Set environment variables from your `.env` file
 3. Set build command: `cd backend && npm install`
 4. Set start command: `cd backend && npm start`
 
+### 3. Database (Supabase)
+1. Create a Supabase project
+2. Run the schema from `supabase_schema.sql`
+3. Configure environment variables with your Supabase credentials
+
 ## Development Setup
 
-1. Clone the repository
-2. Install dependencies:
+1. Clone the repository:
    ```
-   cd frontend && npm install
-   cd ../backend && npm install
+   git clone https://github.com/adittaya/my-fullstack-app.git
    ```
-3. Create `.env` file in backend directory with your credentials
-4. Start backend server:
+
+2. Install backend dependencies:
    ```
-   cd backend && npm start
+   cd backend
+   npm install
    ```
-5. Start frontend development server:
+
+3. Install frontend dependencies:
    ```
-   cd frontend && npm start
+   cd ../frontend
+   npm install
+   ```
+
+4. Create `.env` file in the backend directory with your credentials
+
+5. Start backend server:
+   ```
+   cd backend
+   npm start
+   ```
+
+6. Start frontend development server:
+   ```
+   cd frontend
+   npm start
    ```
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a pull request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
