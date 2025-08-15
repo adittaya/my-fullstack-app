@@ -5,7 +5,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://your-render-app-url.com/api/:splat"
+  to = "https://my-fullstack-app-backend-2omq.onrender.com/api/:splat"
   status = 200
 
 [[redirects]]
