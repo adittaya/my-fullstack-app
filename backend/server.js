@@ -11,6 +11,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Log the port for debugging
+console.log(`Attempting to start server on port: ${PORT}`);
+console.log(`Environment variables:`);
+console.log(`PORT: ${process.env.PORT}`);
+console.log(`SUPABASE_URL: ${process.env.SUPABASE_URL ? 'SET' : 'NOT SET'}`);
+console.log(`SUPABASE_API_KEY: ${process.env.SUPABASE_API_KEY ? 'SET' : 'NOT SET'}`);
+console.log(`JWT_SECRET: ${process.env.JWT_SECRET ? 'SET' : 'NOT SET'}`);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -185,6 +193,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
