@@ -51,6 +51,11 @@
   background-color: #0056b3;
 }
 
+.auth-form button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 .auth-form p {
   margin-top: 20px;
 }
@@ -87,14 +92,14 @@
   margin: 0 auto;
 }
 
-.header {
+.dashboard .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
 }
 
-.header button {
+.dashboard .header button {
   padding: 8px 16px;
   background-color: #dc3545;
   color: white;
@@ -103,7 +108,7 @@
   cursor: pointer;
 }
 
-.header button:hover {
+.dashboard .header button:hover {
   background-color: #c82333;
 }
 
@@ -124,12 +129,15 @@
   margin: 10px 0;
 }
 
-.actions {
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 20px 0;
 }
 
-.actions button {
-  padding: 10px 20px;
+.quick-actions button {
+  padding: 10px 15px;
   background-color: #007bff;
   color: white;
   border: none;
@@ -137,6 +145,346 @@
   cursor: pointer;
 }
 
-.actions button:hover {
+.quick-actions button:hover {
   background-color: #0056b3;
+}
+
+.investments-summary {
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.investments-summary h3 {
+  margin-top: 0;
+}
+
+.recent-activity {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.marketing-stats {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 30px 0;
+}
+
+.marketing-stats h3 {
+  margin-top: 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.stat-item {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #007bff;
+  margin: 0;
+}
+
+.stat-label {
+  font-size: 0.9em;
+  color: #6c757d;
+  margin: 5px 0 0;
+}
+
+.product-plans {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.product-plans .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.plan-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.plan-card h3 {
+  margin-top: 0;
+  color: #007bff;
+}
+
+.plan-price {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #28a745;
+  margin: 10px 0;
+}
+
+.plan-details p {
+  margin: 5px 0;
+}
+
+.plan-card button {
+  width: 100%;
+  padding: 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 15px;
+}
+
+.plan-card button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.plan-card button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.withdrawal-form, .recharge-form {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.withdrawal-form .header, .recharge-form .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.withdrawal-form .header button, .recharge-form .header button {
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.withdrawal-form .header button:hover, .recharge-form .header button:hover {
+  background-color: #5a6268;
+}
+
+.wallet-balance {
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  text-align: center;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.withdrawal-form form div, .recharge-form form div {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.withdrawal-form label, .recharge-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.withdrawal-form input, .recharge-form input,
+.withdrawal-form select, .recharge-form select,
+.withdrawal-form textarea, .recharge-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.withdrawal-form button[type="submit"], .recharge-form button[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.withdrawal-form button[type="submit"]:hover:not(:disabled),
+.recharge-form button[type="submit"]:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.withdrawal-form button[type="submit"]:disabled,
+.recharge-form button[type="submit"]:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.withdrawal-info, .recharge-info {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+  text-align: left;
+}
+
+.upi-instructions {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.upi-instructions button {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 10px 0;
+}
+
+.upi-instructions button:hover {
+  background-color: #218838;
+}
+
+.upi-id {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #007bff;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.qr-placeholder {
+  background-color: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 40px 20px;
+  margin: 20px 0;
+}
+
+.qr-placeholder p:first-child {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0 0 10px;
+}
+
+.anniversary-badge {
+  background-color: #ffd700;
+  border: 2px solid #ffa500;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 30px 0;
+  text-align: center;
+}
+
+.anniversary-badge h3 {
+  margin: 0;
+  color: #8b0000;
+  font-size: 1.8em;
+}
+
+.fake-withdrawal-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background-color: #28a745;
+  color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: slideIn 0.5s ease-out;
+}
+
+.popup-content p {
+  margin: 5px 0;
+  font-size: 0.9em;
+}
+
+.popup-content p:first-child {
+  font-weight: bold;
+  font-size: 1em;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .product-plans .header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .dashboard .header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .fake-withdrawal-popup {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
 }
