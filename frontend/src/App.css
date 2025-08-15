@@ -1,0 +1,142 @@
+.App {
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.auth-form {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form h2 {
+  margin-top: 0;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.auth-form button {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 10px 0;
+}
+
+.auth-form button:hover {
+  background-color: #0056b3;
+}
+
+.auth-form p {
+  margin-top: 20px;
+}
+
+.auth-form p button {
+  width: auto;
+  background-color: #28a745;
+}
+
+.auth-form p button:hover {
+  background-color: #1e7e34;
+}
+
+.error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.success {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.dashboard {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.header button {
+  padding: 8px 16px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.header button:hover {
+  background-color: #c82333;
+}
+
+.user-info {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.user-info h3 {
+  margin-top: 0;
+}
+
+.user-info p {
+  margin: 10px 0;
+}
+
+.actions {
+  margin: 20px 0;
+}
+
+.actions button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background-color: #0056b3;
+}
