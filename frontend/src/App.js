@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
+// Determine the API base URL based on environment
+const getApiBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, use the Render backend URL
+    return 'https://my-fullstack-app-backend-2omq.onrender.com';
+  } else {
+    // In development, use the proxy
+    return '';
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -42,7 +55,7 @@ function App() {
     setSuccess('');
     
     try {
-      const response = await axios.post('/api/register', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/register`, formData);
       setToken(response.data.token);
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
@@ -61,7 +74,7 @@ function App() {
     setSuccess('');
     
     try {
-      const response = await axios.post('/api/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/login`, {
         email: formData.email,
         password: formData.password
       });
@@ -80,7 +93,7 @@ function App() {
 
   const fetchUserData = async (authToken) => {
     try {
-      const response = await axios.get('/api/data', {
+      const response = await axios.get(`${API_BASE_URL}/api/data`, {
         headers: {
           Authorization: `Bearer ${authToken}`
         }
