@@ -121,6 +121,12 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
               </div>
               
               <div className="plan-detail">
+                <i>📂</i>
+                <span>Category: </span>
+                <span className="plan-detail-value">{plan.category}</span>
+              </div>
+              
+              <div className="plan-detail">
                 <i>💰</i>
                 <span>Price: </span>
                 <span className="plan-detail-value">{formatCurrency(plan.price)}</span>
