@@ -259,6 +259,7 @@ function App() {
       token={token} 
       userData={userData} 
       onPlanPurchase={handlePlanPurchase}
+      onBack={() => handleViewChange('dashboard')}
     />
   );
 
@@ -267,6 +268,7 @@ function App() {
       token={token} 
       userData={userData} 
       onWithdrawalRequest={handleWithdrawalRequest}
+      onBack={() => handleViewChange('dashboard')}
     />
   );
 
@@ -275,6 +277,7 @@ function App() {
       token={token} 
       userData={userData} 
       onRechargeRequest={handleRechargeRequest}
+      onBack={() => handleViewChange('dashboard')}
     />
   );
 
@@ -282,6 +285,7 @@ function App() {
     <Referral 
       token={token} 
       userData={userData} 
+      onBack={() => handleViewChange('dashboard')}
     />
   );
 
