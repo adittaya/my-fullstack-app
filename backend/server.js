@@ -947,10 +947,6 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
     res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
-    console.error('Recharge rejection error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Approve withdrawal (admin)
 app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res) => {
