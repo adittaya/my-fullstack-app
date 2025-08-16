@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Create unique index for users email
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_email ON users(email);
+
 -- Create product_plans table
 CREATE TABLE IF NOT EXISTS product_plans (
   id SERIAL PRIMARY KEY,
@@ -21,6 +24,9 @@ CREATE TABLE IF NOT EXISTS product_plans (
   duration_days INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Create unique index for product plans name
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_product_plan_name ON product_plans(name);
 
 -- Create investments table
 CREATE TABLE IF NOT EXISTS investments (
