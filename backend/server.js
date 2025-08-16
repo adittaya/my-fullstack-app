@@ -257,32 +257,26 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     let productPlans, error;
     
     // Try to fetch with category column first
-    try {
-      console.log('Attempting to fetch product plans with category column');
-      const result = await supabase
-        .from('product_plans')
-        .select('id, name, category, price, daily_income, total_return, duration_days')
-        .order('price', { ascending: true });
-      
-      productPlans = result.data;
-      error = result.error;
-      
-      if (error) {
-        console.log('Error fetching with category column:', error);
-      } else {
-        console.log('Successfully fetched product plans with category column');
-      }
-    } catch (categoryError) {
-      console.log('Exception when fetching with category column:', categoryError);
+    console.log('Attempting to fetch product plans with category column');
+    const resultWithCategory = await supabase
+      .from('product_plans')
+      .select('id, name, category, price, daily_income, total_return, duration_days')
+      .order('price', { ascending: true });
+    
+    if (resultWithCategory.error && resultWithCategory.error.message.includes('column product_plans.category does not exist')) {
       // If category column doesn't exist, fetch without it
       console.log('Category column not found, fetching without it');
-      const result = await supabase
+      const resultWithoutCategory = await supabase
         .from('product_plans')
         .select('id, name, price, daily_income, total_return, duration_days')
         .order('price', { ascending: true });
       
-      productPlans = result.data;
-      error = result.error;
+      productPlans = resultWithoutCategory.data;
+      error = resultWithoutCategory.error;
+    } else {
+      // Either successful or a different error
+      productPlans = resultWithCategory.data;
+      error = resultWithCategory.error;
     }
 
     if (error) {
