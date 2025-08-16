@@ -2,6 +2,9 @@
 -- This script will DROP ALL existing tables and recreate them from scratch
 -- WARNING: This will DELETE ALL DATA in the database
 
+-- Drop any triggers first (before dropping tables)
+DROP TRIGGER IF EXISTS on_updated_at ON users;
+
 -- Drop all tables in correct order (due to foreign key constraints)
 DROP TABLE IF EXISTS balance_adjustments CASCADE;
 DROP TABLE IF EXISTS recharges CASCADE;
@@ -15,9 +18,6 @@ DROP FUNCTION IF EXISTS moddatetime() CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS increment_user_balance(integer, numeric) CASCADE;
 DROP FUNCTION IF EXISTS decrement_user_balance(integer, numeric) CASCADE;
-
--- Drop any triggers
-DROP TRIGGER IF EXISTS on_updated_at ON users;
 
 -- Now recreate everything from scratch using the clean schema
 -- Create users table WITHOUT updated_at column
@@ -92,19 +92,6 @@ CREATE TABLE balance_adjustments (
   adjustment_date TIMESTAMP DEFAULT NOW()
 );
 
--- Insert sample product plans
-INSERT INTO product_plans (name, price, daily_income, total_return, duration_days) VALUES
-('Starter Plan', 490.00, 80.00, 720.00, 9),
-('Smart Saver', 750.00, 85.00, 1190.00, 14),
-('Bronze Booster', 1000.00, 100.00, 1500.00, 15),
-('Silver Growth', 1500.00, 115.00, 2300.00, 20),
-('Gold Income', 2000.00, 135.00, 3105.00, 23),
-('Platinum Plan', 2500.00, 160.00, 3840.00, 24),
-('Elite Earning', 3000.00, 180.00, 4500.00, 25),
-('VIP Profiter', 3500.00, 200.00, 5400.00, 27),
-('Executive Growth', 4000.00, 220.00, 6160.00, 28),
-('Royal Investor', 5000.00, 250.00, 7500.00, 30);
-
 -- Create indexes for better performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_investments_user_id ON investments(user_id);
@@ -142,6 +129,19 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Insert sample product plans
+INSERT INTO product_plans (name, price, daily_income, total_return, duration_days) VALUES
+('Starter Plan', 490.00, 80.00, 720.00, 9),
+('Smart Saver', 750.00, 85.00, 1190.00, 14),
+('Bronze Booster', 1000.00, 100.00, 1500.00, 15),
+('Silver Growth', 1500.00, 115.00, 2300.00, 20),
+('Gold Income', 2000.00, 135.00, 3105.00, 23),
+('Platinum Plan', 2500.00, 160.00, 3840.00, 24),
+('Elite Earning', 3000.00, 180.00, 4500.00, 25),
+('VIP Profiter', 3500.00, 200.00, 5400.00, 27),
+('Executive Growth', 4000.00, 220.00, 6160.00, 28),
+('Royal Investor', 5000.00, 250.00, 7500.00, 30);
 
 -- Create admin user with properly hashed password
 INSERT INTO users (name, email, password, mobile, balance, is_admin, created_at)
