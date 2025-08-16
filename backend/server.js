@@ -352,8 +352,7 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     const { error: updateError } = await supabase
       .from('users')
       .update({ 
-        balance: newBalance,
-        updated_at: new Date().toISOString()
+        balance: newBalance
       })
       .eq('id', userId);
 
@@ -382,8 +381,7 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', userId);
       return res.status(500).json({ error: 'Failed to record investment' });
@@ -497,8 +495,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
     const { error: updateError } = await supabase
       .from('users')
       .update({ 
-        balance: newBalance,
-        updated_at: new Date().toISOString()
+        balance: newBalance
       })
       .eq('id', userId);
 
@@ -529,8 +526,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', userId);
       return res.status(500).json({ error: 'Failed to record withdrawal request' });
@@ -868,8 +864,7 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ 
-        balance: newBalance,
-        updated_at: new Date().toISOString()
+        balance: newBalance
       })
       .eq('id', recharge.user_id)
       .select();
@@ -914,8 +909,7 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', recharge.user_id);
       
@@ -928,8 +922,7 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', recharge.user_id);
       
@@ -1084,8 +1077,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ 
-        balance: newBalance,
-        updated_at: new Date().toISOString()
+        balance: newBalance
       })
       .eq('id', withdrawal.user_id)
       .select();
@@ -1130,8 +1122,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', withdrawal.user_id);
       
@@ -1144,8 +1135,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', withdrawal.user_id);
       
@@ -1233,8 +1223,7 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ 
-        balance: newBalance,
-        updated_at: new Date().toISOString()
+        balance: newBalance
       })
       .eq('id', userId)
       .select();
@@ -1282,8 +1271,7 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
       await supabase
         .from('users')
         .update({ 
-          balance: user.balance,
-          updated_at: new Date().toISOString()
+          balance: user.balance
         })
         .eq('id', userId);
       
