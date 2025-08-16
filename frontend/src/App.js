@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+
+// Import components
+import UserDashboard from './components/UserDashboard';
+import InvestmentPlans from './components/InvestmentPlans';
+import WithdrawalForm from './components/WithdrawalForm';
+import RechargeForm from './components/RechargeForm';
+import Referral from './components/Referral';
+import MarketingStats from './components/MarketingStats';
+import FakeWithdrawalPopup from './components/FakeWithdrawalPopup';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
@@ -18,7 +27,7 @@ const API_BASE_URL = getApiBaseUrl();
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard'
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -30,6 +39,9 @@ function App() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Timer refs
+  const fakeWithdrawalTimer = useRef(null);
+
   // Check if user is already logged in
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -41,15 +53,38 @@ function App() {
       setView('dashboard');
       fetchUserData(savedToken);
     }
+    
+    // Start fake withdrawal timer for all users
+    startFakeWithdrawalTimer();
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (fakeWithdrawalTimer.current) {
+        clearInterval(fakeWithdrawalTimer.current);
+      }
+    };
   }, []);
-  
+
+  // Handle fake withdrawal popups
+  const startFakeWithdrawalTimer = () => {
+    // Clear existing timer if any
+    if (fakeWithdrawalTimer.current) {
+      clearInterval(fakeWithdrawalTimer.current);
+    }
+    
+    // Start new timer (every 10 seconds)
+    fakeWithdrawalTimer.current = setInterval(() => {
+      // This will be handled by the FakeWithdrawalPopup component
+    }, 10000); // Every 10 seconds
+  };
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
-  
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -71,7 +106,7 @@ function App() {
       setLoading(false);
     }
   };
-  
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -97,7 +132,7 @@ function App() {
       setLoading(false);
     }
   };
-  
+
   const fetchUserData = async (authToken) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/data`, {
@@ -110,7 +145,7 @@ function App() {
       setError(err.response?.data?.error || 'Failed to fetch user data');
     }
   };
-  
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -124,8 +159,17 @@ function App() {
       password: '',
       mobile: ''
     });
+    
+    // Clear timers
+    if (fakeWithdrawalTimer.current) {
+      clearInterval(fakeWithdrawalTimer.current);
+    }
   };
-  
+
+  const handleViewChange = (newView) => {
+    setView(newView);
+  };
+
   // View rendering functions
   const renderLoginForm = () => (
     <div className="auth-form">
@@ -163,7 +207,7 @@ function App() {
       </p>
     </div>
   );
-  
+
   const renderRegisterForm = () => (
     <div className="auth-form">
       <h2>Register</h2>
@@ -220,46 +264,74 @@ function App() {
       </p>
     </div>
   );
-  
-  const renderDashboard = () => (
-    <div className="dashboard">
-      <div className="header">
-        <h2>Welcome, {userData?.name || user?.name}!</h2>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-      
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
-      
-      <div className="user-info">
-        <h3>User Information</h3>
-        <p><strong>Email:</strong> {userData?.email || user?.email}</p>
-        <p><strong>Mobile:</strong> {userData?.mobile || 'Not provided'}</p>
-        <p><strong>Balance:</strong> ₹{userData?.balance || 0}</p>
-      </div>
-      
-      <div className="actions">
-        <button onClick={() => fetchUserData(token)}>Refresh Data</button>
-      </div>
-    </div>
-  );
-  
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Investment Platform</h1>
       </header>
+      
+      {/* Show fake withdrawal popup for all users */}
+      <FakeWithdrawalPopup />
+      
       <main>
         {!token ? (
           // Non-authenticated views
           <>
             {view === 'login' && renderLoginForm()}
             {view === 'register' && renderRegisterForm()}
+            
+            {/* Marketing section for non-logged in users */}
+            <div className="marketing-section">
+              <MarketingStats />
+            </div>
           </>
         ) : (
           // Authenticated views
           <>
-            {view === 'dashboard' && renderDashboard()}
+            {view === 'dashboard' && (
+              <UserDashboard 
+                token={token} 
+                userData={userData} 
+                onLogout={handleLogout} 
+                onViewChange={handleViewChange}
+              />
+            )}
+            {view === 'plans' && (
+              <InvestmentPlans 
+                token={token} 
+                userData={userData} 
+                onPlanPurchase={(newBalance) => {
+                  setUserData({...userData, balance: newBalance});
+                }}
+              />
+            )}
+            {view === 'withdraw' && (
+              <WithdrawalForm 
+                token={token} 
+                userData={userData}
+                onWithdrawalRequest={(newBalance) => {
+                  setUserData({...userData, balance: newBalance});
+                }}
+              />
+            )}
+            {view === 'recharge' && (
+              <RechargeForm 
+                token={token} 
+                userData={userData}
+                onRechargeRequest={() => {
+                  // Refresh user data if needed
+                  fetchUserData(token);
+                }}
+              />
+            )}
+            {view === 'referral' && (
+              <Referral 
+                token={token} 
+                userData={userData}
+                onBack={() => setView('dashboard')}
+              />
+            )}
           </>
         )}
       </main>
