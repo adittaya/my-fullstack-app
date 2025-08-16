@@ -22,7 +22,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
 
   useEffect(() => {
     fetchProductPlans();
-  }, []);
+  }, [fetchProductPlans]);
 
   const fetchProductPlans = async () => {
     setLoading(true);

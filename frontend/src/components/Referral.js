@@ -24,7 +24,7 @@ function Referral({ token, userData, onBack }) {
     if (token) {
       fetchReferralLink();
     }
-  }, [token]);
+  }, [token, fetchReferralLink]);
 
   const fetchReferralLink = async () => {
     setLoading(true);

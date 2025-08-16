@@ -8,7 +8,7 @@ import RechargeForm from './components/RechargeForm';
 import Referral from './components/Referral';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral'
   const [formData, setFormData] = useState({

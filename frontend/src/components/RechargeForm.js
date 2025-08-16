@@ -65,8 +65,8 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
 
   const copyUPIId = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/upi-id`);
-      navigator.clipboard.writeText(response.data.upiId);
+      const res = await axios.get(`${API_BASE_URL}/api/upi-id`);
+      navigator.clipboard.writeText(res.data.upiId);
       setSuccess('UPI ID copied to clipboard!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
