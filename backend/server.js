@@ -1016,10 +1016,6 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
     res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
-    console.error('Withdrawal approval error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Reject withdrawal (admin)
 app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res) => {
