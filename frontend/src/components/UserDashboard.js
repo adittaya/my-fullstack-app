@@ -18,11 +18,9 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    setError('');
 
     try {
       // Fetch investments
@@ -55,7 +53,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
 
       setTransactions(allTransactions.slice(0, 10)); // Show only last 10 transactions
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to fetch dashboard data');
+      console.error('Failed to fetch dashboard data:', err);
     } finally {
       setLoading(false);
     }
