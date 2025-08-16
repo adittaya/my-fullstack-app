@@ -189,10 +189,6 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
             required
           />
         </div>
-            placeholder="Minimum ₹100"
-            required
-          />
-        </div>
         
         <div className="form-group">
           <label>Method</label>
