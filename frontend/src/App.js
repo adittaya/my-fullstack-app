@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import UserDashboard from './components/UserDashboard';
+import InvestmentPlans from './components/InvestmentPlans';
+import WithdrawalForm from './components/WithdrawalForm';
+import RechargeForm from './components/RechargeForm';
+import Referral from './components/Referral';
 
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard'
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -113,6 +118,39 @@ function App() {
     });
   };
 
+  const handleViewChange = (newView) => {
+    setView(newView);
+    // Clear any previous error/success messages when switching views
+    setError('');
+    setSuccess('');
+  };
+
+  const handlePlanPurchase = (newBalance) => {
+    // Update user balance after plan purchase
+    if (userData) {
+      setUserData({
+        ...userData,
+        balance: newBalance
+      });
+    }
+    setSuccess('Plan purchased successfully!');
+  };
+
+  const handleWithdrawalRequest = (newBalance) => {
+    // Update user balance after withdrawal request
+    if (userData) {
+      setUserData({
+        ...userData,
+        balance: newBalance
+      });
+    }
+    setSuccess('Withdrawal request submitted successfully!');
+  };
+
+  const handleRechargeRequest = () => {
+    setSuccess('Recharge request submitted successfully! Waiting for admin approval.');
+  };
+
   const renderLoginForm = () => (
     <div className="auth-form">
       <h2>Login</h2>
@@ -208,66 +246,43 @@ function App() {
   );
 
   const renderDashboard = () => (
-    <div className="dashboard">
-      <div className="header">
-        <h2>Welcome, {userData?.name || user?.name}!</h2>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-      
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
-      
-      <div className="user-info">
-        <h3>User Information</h3>
-        <p><strong>Email:</strong> {userData?.email || user?.email}</p>
-        <p><strong>Mobile:</strong> {userData?.mobile || 'Not provided'}</p>
-        <p><strong>Balance:</strong> ₹{userData?.balance || 0}</p>
-      </div>
-      
-      <div className="quick-actions">
-        <button onClick={() => alert('Product Plans feature will be implemented soon!')}>View Plans</button>
-        <button onClick={() => alert('Withdrawal feature will be implemented soon!')}>Withdraw</button>
-        <button onClick={() => alert('Recharge feature will be implemented soon!')}>Recharge</button>
-        <button onClick={() => alert('Referral feature will be implemented soon!')}>Share Referral</button>
-      </div>
-      
-      <div className="investments-summary">
-        <h3>Your Investments</h3>
-        <p>Total Investments: ₹0.00</p>
-        <p>Active Plans: 0</p>
-      </div>
-      
-      <div className="recent-activity">
-        <h3>Recent Activity</h3>
-        <p>No recent activity</p>
-      </div>
-      
-      <div className="marketing-stats">
-        <h3>Platform Statistics</h3>
-        <div className="stats-grid">
-          <div className="stat-item">
-            <p className="stat-value">10,000,000</p>
-            <p className="stat-label">Total Users</p>
-          </div>
-          <div className="stat-item">
-            <p className="stat-value">1,000,000</p>
-            <p className="stat-label">Daily Active</p>
-          </div>
-          <div className="stat-item">
-            <p className="stat-value">₹10 Crore</p>
-            <p className="stat-label">Total Withdrawn</p>
-          </div>
-          <div className="stat-item">
-            <p className="stat-value">98.5%</p>
-            <p className="stat-label">Success Rate</p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="anniversary-badge">
-        <h3>5 YEARS ANNIVERSARY ACHIEVEMENT</h3>
-      </div>
-    </div>
+    <UserDashboard 
+      token={token} 
+      userData={userData} 
+      onLogout={handleLogout} 
+      onViewChange={handleViewChange} 
+    />
+  );
+
+  const renderInvestmentPlans = () => (
+    <InvestmentPlans 
+      token={token} 
+      userData={userData} 
+      onPlanPurchase={handlePlanPurchase}
+    />
+  );
+
+  const renderWithdrawalForm = () => (
+    <WithdrawalForm 
+      token={token} 
+      userData={userData} 
+      onWithdrawalRequest={handleWithdrawalRequest}
+    />
+  );
+
+  const renderRechargeForm = () => (
+    <RechargeForm 
+      token={token} 
+      userData={userData} 
+      onRechargeRequest={handleRechargeRequest}
+    />
+  );
+
+  const renderReferral = () => (
+    <Referral 
+      token={token} 
+      userData={userData} 
+    />
   );
 
   return (
@@ -316,6 +331,10 @@ function App() {
           // Authenticated views
           <>
             {view === 'dashboard' && renderDashboard()}
+            {view === 'plans' && renderInvestmentPlans()}
+            {view === 'withdraw' && renderWithdrawalForm()}
+            {view === 'recharge' && renderRechargeForm()}
+            {view === 'referral' && renderReferral()}
           </>
         )}
       </main>

@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-function WithdrawalForm({ token, userData, onWithdrawalRequest }) {
+function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
   const [formData, setFormData] = useState({
     amount: '',
     method: 'bank', // 'bank' or 'upi'
@@ -67,7 +67,10 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest }) {
 
   return (
     <div className="withdrawal-form">
-      <h2>Request Withdrawal</h2>
+      <div className="header">
+        <h2>Request Withdrawal</h2>
+        <button onClick={onBack}>Back to Dashboard</button>
+      </div>
       
       <div className="wallet-balance">
         <p>Available Balance: ₹{userData?.balance || 0}</p>

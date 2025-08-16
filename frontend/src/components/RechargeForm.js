@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-function RechargeForm({ token, userData, onRechargeRequest }) {
+function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
   const [formData, setFormData] = useState({
     amount: '',
     utr: ''
@@ -76,7 +76,10 @@ function RechargeForm({ token, userData, onRechargeRequest }) {
 
   return (
     <div className="recharge-form">
-      <h2>Recharge Wallet</h2>
+      <div className="header">
+        <h2>Recharge Wallet</h2>
+        <button onClick={onBack}>Back to Dashboard</button>
+      </div>
       
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}

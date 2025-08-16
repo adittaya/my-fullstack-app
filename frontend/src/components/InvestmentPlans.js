@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-function InvestmentPlans({ token, onPlanPurchase, userData }) {
+function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -72,7 +72,10 @@ function InvestmentPlans({ token, onPlanPurchase, userData }) {
 
   return (
     <div className="investment-plans">
-      <h2>Investment Plans</h2>
+      <div className="header">
+        <h2>Investment Plans</h2>
+        <button onClick={onBack}>Back to Dashboard</button>
+      </div>
       
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
