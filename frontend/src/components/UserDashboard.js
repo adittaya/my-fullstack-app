@@ -150,7 +150,12 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
             
             return (
               <div key={investment.id} className="product-card">
-                <h4>{investment.plan_name}</h4>
+                <div className="product-header">
+                  <h4>{investment.plan_name}</h4>
+                  {investment.category && (
+                    <div className="product-category">{investment.category}</div>
+                  )}
+                </div>
                 <div className="product-info">
                   <span>Days Left</span>
                   <span>{daysLeft > 0 ? daysLeft : 0}</span>

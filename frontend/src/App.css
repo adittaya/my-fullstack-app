@@ -317,62 +317,38 @@ body {
   background: var(--card-bg);
   backdrop-filter: blur(10px);
   border-radius: var(--border-radius-xl);
-  padding: 15px;
+  padding: 20px;
   box-shadow: var(--shadow-glass);
   border: 1px solid var(--card-border);
-  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
 
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-glow);
+.product-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold-primary), var(--royal-blue-light));
 }
 
-.product-card h4 {
-  font-size: 1rem;
-  margin: 0 0 10px;
-  color: var(--gold-primary);
-}
-
-.product-info {
+.product-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.product-info span {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.progress-container {
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  margin-bottom: 10px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--royal-blue), var(--gold-primary));
-  border-radius: 3px;
-  width: 70%;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 20px;
+.product-category {
   font-size: 0.7rem;
+  background: rgba(255, 215, 0, 0.2);
+  color: var(--gold-primary);
+  padding: 3px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
   font-weight: 600;
-}
-
-.status-badge.active {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
 }
 
 /* Transactions */
