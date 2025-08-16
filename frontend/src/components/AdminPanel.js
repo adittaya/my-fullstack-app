@@ -80,15 +80,17 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/approve`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/approve`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      setSuccess('Recharge approved successfully!');
+      setSuccess(response.data.message || 'Recharge approved successfully!');
       fetchPendingRecharges();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to approve recharge');
+      const errorMsg = err.response?.data?.error || 'Failed to approve recharge';
+      setError(`Failed to approve recharge: ${errorMsg}`);
+      console.error('Recharge approval error:', err);
     } finally {
       setLoading(false);
     }
@@ -100,15 +102,17 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/reject`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/reject`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      setSuccess('Recharge rejected successfully!');
+      setSuccess(response.data.message || 'Recharge rejected successfully!');
       fetchPendingRecharges();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reject recharge');
+      const errorMsg = err.response?.data?.error || 'Failed to reject recharge';
+      setError(`Failed to reject recharge: ${errorMsg}`);
+      console.error('Recharge rejection error:', err);
     } finally {
       setLoading(false);
     }
@@ -120,15 +124,17 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/approve`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/approve`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      setSuccess('Withdrawal approved successfully!');
+      setSuccess(response.data.message || 'Withdrawal approved successfully!');
       fetchPendingWithdrawals();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to approve withdrawal');
+      const errorMsg = err.response?.data?.error || 'Failed to approve withdrawal';
+      setError(`Failed to approve withdrawal: ${errorMsg}`);
+      console.error('Withdrawal approval error:', err);
     } finally {
       setLoading(false);
     }
@@ -140,15 +146,17 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/reject`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/reject`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      setSuccess('Withdrawal rejected successfully!');
+      setSuccess(response.data.message || 'Withdrawal rejected successfully!');
       fetchPendingWithdrawals();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reject withdrawal');
+      const errorMsg = err.response?.data?.error || 'Failed to reject withdrawal';
+      setError(`Failed to reject withdrawal: ${errorMsg}`);
+      console.error('Withdrawal rejection error:', err);
     } finally {
       setLoading(false);
     }

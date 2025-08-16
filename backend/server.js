@@ -10,7 +10,7 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 // Log the port for debugging
 console.log(`Attempting to start server on port: ${PORT}`);
@@ -857,7 +857,8 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
         status: 'approved',
         processed_date: new Date().toISOString()
       })
-      .eq('id', rechargeId);
+      .eq('id', rechargeId)
+      .eq('status', 'pending'); // Add this condition to ensure we only update pending recharges
 
     if (rechargeUpdateError) {
       // Rollback user balance update
@@ -867,6 +868,25 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
         .eq('id', recharge.user_id);
       
       return res.status(500).json({ error: 'Failed to update recharge status' });
+    }
+
+    // Check if any rows were updated (recharge was actually pending)
+    if (rechargeUpdateError || rechargeUpdateError === null) {
+      const { count, error: countError } = await supabase
+        .from('recharges')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', rechargeId)
+        .eq('status', 'approved');
+      
+      if (countError || count === 0) {
+        // Rollback user balance update
+        await supabase
+          .from('users')
+          .update({ balance: user.balance })
+          .eq('id', recharge.user_id);
+        
+        return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
+      }
     }
 
     res.json({
@@ -884,6 +904,18 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
   try {
     const rechargeId = req.params.id;
 
+    // Check if recharge is still pending
+    const { data: recharge, error: fetchError } = await supabase
+      .from('recharges')
+      .select('id')
+      .eq('id', rechargeId)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !recharge) {
+      return res.status(404).json({ error: 'Pending recharge request not found' });
+    }
+
     // Update recharge status
     const { error: rechargeUpdateError } = await supabase
       .from('recharges')
@@ -896,6 +928,17 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
 
     if (rechargeUpdateError) {
       return res.status(500).json({ error: 'Failed to update recharge status' });
+    }
+
+    // Check if any rows were updated (recharge was actually pending)
+    const { count, error: countError } = await supabase
+      .from('recharges')
+      .select('*', { count: 'exact', head: true })
+      .eq('id', rechargeId)
+      .eq('status', 'rejected');
+    
+    if (countError || count === 0) {
+      return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
     }
 
     res.json({
@@ -931,10 +974,22 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
         status: 'approved',
         processed_date: new Date().toISOString()
       })
-      .eq('id', withdrawalId);
+      .eq('id', withdrawalId)
+      .eq('status', 'pending'); // Add this condition to ensure we only update pending withdrawals
 
     if (withdrawalUpdateError) {
       return res.status(500).json({ error: 'Failed to update withdrawal status' });
+    }
+
+    // Check if any rows were updated (withdrawal was actually pending)
+    const { count, error: countError } = await supabase
+      .from('withdrawals')
+      .select('*', { count: 'exact', head: true })
+      .eq('id', withdrawalId)
+      .eq('status', 'approved');
+    
+    if (countError || count === 0) {
+      return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
 
     res.json({
@@ -993,7 +1048,8 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
         status: 'rejected',
         processed_date: new Date().toISOString()
       })
-      .eq('id', withdrawalId);
+      .eq('id', withdrawalId)
+      .eq('status', 'pending'); // Add this condition to ensure we only update pending withdrawals
 
     if (withdrawalUpdateError) {
       // Rollback user balance update
@@ -1003,6 +1059,23 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
         .eq('id', withdrawal.user_id);
       
       return res.status(500).json({ error: 'Failed to update withdrawal status' });
+    }
+
+    // Check if any rows were updated (withdrawal was actually pending)
+    const { count, error: countError } = await supabase
+      .from('withdrawals')
+      .select('*', { count: 'exact', head: true })
+      .eq('id', withdrawalId)
+      .eq('status', 'rejected');
+    
+    if (countError || count === 0) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ balance: user.balance })
+        .eq('id', withdrawal.user_id);
+      
+      return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
 
     res.json({
