@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Determine the API base URL based on environment
@@ -20,11 +20,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    fetchProductPlans();
-  }, [fetchProductPlans]);
-
-  const fetchProductPlans = async () => {
+  const fetchProductPlans = useCallback(async () => {
     setLoading(true);
     setError('');
     setSuccess('');
@@ -41,7 +37,11 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchProductPlans();
+  }, [fetchProductPlans]);
 
   const handlePurchasePlan = async (planId) => {
     setLoading(true);

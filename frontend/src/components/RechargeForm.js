@@ -71,6 +71,7 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to copy UPI ID');
+      console.error(err);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Determine the API base URL based on environment
@@ -20,13 +20,7 @@ function Referral({ token, userData, onBack }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    if (token) {
-      fetchReferralLink();
-    }
-  }, [token, fetchReferralLink]);
-
-  const fetchReferralLink = async () => {
+  const fetchReferralLink = useCallback(async () => {
     setLoading(true);
     setError('');
     setSuccess('');
@@ -43,7 +37,13 @@ function Referral({ token, userData, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchReferralLink();
+    }
+  }, [token, fetchReferralLink]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
