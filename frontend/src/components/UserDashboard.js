@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import productListingImage from '../assets/product-listing.jpg';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
@@ -25,9 +24,9 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     if (token) {
       fetchDashboardData();
     }
-  }, [token]);
+  }, [token, fetchDashboardData]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -66,7 +65,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   const copyReferralLink = async () => {
     try {
