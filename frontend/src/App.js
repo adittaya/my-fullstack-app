@@ -1,33 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
-
-// Import components
-import UserDashboard from './components/UserDashboard';
-import InvestmentPlans from './components/InvestmentPlans';
-import WithdrawalForm from './components/WithdrawalForm';
-import RechargeForm from './components/RechargeForm';
-import Referral from './components/Referral';
-import MarketingStats from './components/MarketingStats';
-import FakeWithdrawalPopup from './components/FakeWithdrawalPopup';
-
-// Determine the API base URL based on environment
-const getApiBaseUrl = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // In production, use the Render backend URL
-    return 'https://my-fullstack-app-backend-2omq.onrender.com';
-  } else {
-    // In development, use the proxy
-    return '';
-  }
-};
-
-const API_BASE_URL = getApiBaseUrl();
 
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral'
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,9 +16,6 @@ function App() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  // Timer refs
-  const fakeWithdrawalTimer = useRef(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -53,30 +28,7 @@ function App() {
       setView('dashboard');
       fetchUserData(savedToken);
     }
-    
-    // Start fake withdrawal timer for all users
-    startFakeWithdrawalTimer();
-    
-    // Cleanup timer on unmount
-    return () => {
-      if (fakeWithdrawalTimer.current) {
-        clearInterval(fakeWithdrawalTimer.current);
-      }
-    };
   }, []);
-
-  // Handle fake withdrawal popups
-  const startFakeWithdrawalTimer = () => {
-    // Clear existing timer if any
-    if (fakeWithdrawalTimer.current) {
-      clearInterval(fakeWithdrawalTimer.current);
-    }
-    
-    // Start new timer (every 10 seconds)
-    fakeWithdrawalTimer.current = setInterval(() => {
-      // This will be handled by the FakeWithdrawalPopup component
-    }, 10000); // Every 10 seconds
-  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -92,7 +44,7 @@ function App() {
     setLoading(true);
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/register`, formData);
+      const response = await axios.post('/api/register', formData);
       setToken(response.data.token);
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
@@ -114,7 +66,7 @@ function App() {
     setLoading(true);
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/login`, {
+      const response = await axios.post('/api/login', {
         email: formData.email,
         password: formData.password
       });
@@ -135,7 +87,7 @@ function App() {
 
   const fetchUserData = async (authToken) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/data`, {
+      const response = await axios.get('/api/data', {
         headers: {
           Authorization: `Bearer ${authToken}`
         }
@@ -159,18 +111,8 @@ function App() {
       password: '',
       mobile: ''
     });
-    
-    // Clear timers
-    if (fakeWithdrawalTimer.current) {
-      clearInterval(fakeWithdrawalTimer.current);
-    }
   };
 
-  const handleViewChange = (newView) => {
-    setView(newView);
-  };
-
-  // View rendering functions
   const renderLoginForm = () => (
     <div className="auth-form">
       <h2>Login</h2>
@@ -265,14 +207,74 @@ function App() {
     </div>
   );
 
+  const renderDashboard = () => (
+    <div className="dashboard">
+      <div className="header">
+        <h2>Welcome, {userData?.name || user?.name}!</h2>
+        <button onClick={handleLogout}>Logout</button>
+      </div>
+      
+      {error && <div className="error">{error}</div>}
+      {success && <div className="success">{success}</div>}
+      
+      <div className="user-info">
+        <h3>User Information</h3>
+        <p><strong>Email:</strong> {userData?.email || user?.email}</p>
+        <p><strong>Mobile:</strong> {userData?.mobile || 'Not provided'}</p>
+        <p><strong>Balance:</strong> ₹{userData?.balance || 0}</p>
+      </div>
+      
+      <div className="quick-actions">
+        <button onClick={() => alert('Product Plans feature will be implemented soon!')}>View Plans</button>
+        <button onClick={() => alert('Withdrawal feature will be implemented soon!')}>Withdraw</button>
+        <button onClick={() => alert('Recharge feature will be implemented soon!')}>Recharge</button>
+        <button onClick={() => alert('Referral feature will be implemented soon!')}>Share Referral</button>
+      </div>
+      
+      <div className="investments-summary">
+        <h3>Your Investments</h3>
+        <p>Total Investments: ₹0.00</p>
+        <p>Active Plans: 0</p>
+      </div>
+      
+      <div className="recent-activity">
+        <h3>Recent Activity</h3>
+        <p>No recent activity</p>
+      </div>
+      
+      <div className="marketing-stats">
+        <h3>Platform Statistics</h3>
+        <div className="stats-grid">
+          <div className="stat-item">
+            <p className="stat-value">10,000,000</p>
+            <p className="stat-label">Total Users</p>
+          </div>
+          <div className="stat-item">
+            <p className="stat-value">1,000,000</p>
+            <p className="stat-label">Daily Active</p>
+          </div>
+          <div className="stat-item">
+            <p className="stat-value">₹10 Crore</p>
+            <p className="stat-label">Total Withdrawn</p>
+          </div>
+          <div className="stat-item">
+            <p className="stat-value">98.5%</p>
+            <p className="stat-label">Success Rate</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="anniversary-badge">
+        <h3>5 YEARS ANNIVERSARY ACHIEVEMENT</h3>
+      </div>
+    </div>
+  );
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>Investment Platform</h1>
       </header>
-      
-      {/* Show fake withdrawal popup for all users */}
-      <FakeWithdrawalPopup />
       
       <main>
         {!token ? (
@@ -283,55 +285,37 @@ function App() {
             
             {/* Marketing section for non-logged in users */}
             <div className="marketing-section">
-              <MarketingStats />
+              <div className="marketing-stats">
+                <h2>Platform Statistics</h2>
+                <div className="stats-grid">
+                  <div className="stat-item">
+                    <p className="stat-value">10,000,000</p>
+                    <p className="stat-label">Total Users</p>
+                  </div>
+                  <div className="stat-item">
+                    <p className="stat-value">1,000,000</p>
+                    <p className="stat-label">Daily Active</p>
+                  </div>
+                  <div className="stat-item">
+                    <p className="stat-value">₹10 Crore</p>
+                    <p className="stat-label">Total Withdrawn</p>
+                  </div>
+                  <div className="stat-item">
+                    <p className="stat-value">98.5%</p>
+                    <p className="stat-label">Success Rate</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="anniversary-badge">
+                <h3>5 YEARS ANNIVERSARY ACHIEVEMENT</h3>
+              </div>
             </div>
           </>
         ) : (
           // Authenticated views
           <>
-            {view === 'dashboard' && (
-              <UserDashboard 
-                token={token} 
-                userData={userData} 
-                onLogout={handleLogout} 
-                onViewChange={handleViewChange}
-              />
-            )}
-            {view === 'plans' && (
-              <InvestmentPlans 
-                token={token} 
-                userData={userData} 
-                onPlanPurchase={(newBalance) => {
-                  setUserData({...userData, balance: newBalance});
-                }}
-              />
-            )}
-            {view === 'withdraw' && (
-              <WithdrawalForm 
-                token={token} 
-                userData={userData}
-                onWithdrawalRequest={(newBalance) => {
-                  setUserData({...userData, balance: newBalance});
-                }}
-              />
-            )}
-            {view === 'recharge' && (
-              <RechargeForm 
-                token={token} 
-                userData={userData}
-                onRechargeRequest={() => {
-                  // Refresh user data if needed
-                  fetchUserData(token);
-                }}
-              />
-            )}
-            {view === 'referral' && (
-              <Referral 
-                token={token} 
-                userData={userData}
-                onBack={() => setView('dashboard')}
-              />
-            )}
+            {view === 'dashboard' && renderDashboard()}
           </>
         )}
       </main>
