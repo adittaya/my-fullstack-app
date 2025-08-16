@@ -258,6 +258,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     
     // Try to fetch with category column first
     try {
+      console.log('Attempting to fetch product plans with category column');
       const result = await supabase
         .from('product_plans')
         .select('id, name, category, price, daily_income, total_return, duration_days')
@@ -265,7 +266,14 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
       
       productPlans = result.data;
       error = result.error;
+      
+      if (error) {
+        console.log('Error fetching with category column:', error);
+      } else {
+        console.log('Successfully fetched product plans with category column');
+      }
     } catch (categoryError) {
+      console.log('Exception when fetching with category column:', categoryError);
       // If category column doesn't exist, fetch without it
       console.log('Category column not found, fetching without it');
       const result = await supabase
@@ -279,7 +287,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
 
     if (error) {
       console.error('Supabase fetch error:', error);
-      return res.status(500).json({ error: 'Failed to fetch product plans' });
+      return res.status(500).json({ error: 'Failed to fetch product plans: ' + error.message });
     }
 
     // Transform the data to match the frontend expectations
@@ -299,7 +307,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Product plans fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
