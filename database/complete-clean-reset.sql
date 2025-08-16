@@ -143,7 +143,7 @@ INSERT INTO product_plans (name, price, daily_income, total_return, duration_day
 ('Executive Growth', 4000.00, 220.00, 6160.00, 28),
 ('Royal Investor', 5000.00, 250.00, 7500.00, 30);
 
--- Create admin user with properly hashed password
+-- Create admin user FIRST
 INSERT INTO users (name, email, password, mobile, balance, is_admin, created_at)
 VALUES ('Admin User', 'admin@investpro.com', '$2b$10$rOz7qD2R7g8H6t9I3b4KuO6X8z9Q1w2E3r4T5y6U7i8O9p0Q1w2E3r4', '9999999999', 0, true, NOW());
 
@@ -153,22 +153,68 @@ INSERT INTO users (name, email, password, mobile, balance, is_admin, created_at)
 ('Jane Smith', 'jane@example.com', '$2b$10$rOz7qD2R7g8H6t9I3b4KuO6X8z9Q1w2E3r4T5y6U7i8O9p0Q1w2E3r4', '9876543211', 2500.00, false, NOW()),
 ('Robert Johnson', 'robert@example.com', '$2b$10$rOz7qD2R7g8H6t9I3b4KuO6X8z9Q1w2E3r4T5y6U7i8O9p0Q1w2E3r4', '9876543212', 500.00, false, NOW());
 
--- Create sample investments
-INSERT INTO investments (user_id, plan_id, plan_name, amount, purchase_date, status) VALUES
-(2, 1, 'Starter Plan', 490.00, NOW() - INTERVAL '2 days', 'active'),
-(2, 3, 'Bronze Booster', 1000.00, NOW() - INTERVAL '5 days', 'active'),
-(3, 5, 'Gold Income', 2000.00, NOW() - INTERVAL '1 day', 'active'),
-(4, 2, 'Smart Saver', 750.00, NOW() - INTERVAL '3 days', 'active');
+-- Create sample investments (using actual user IDs)
+DO $$
+DECLARE
+  user1_id INTEGER;
+  user2_id INTEGER;
+  user3_id INTEGER;
+  plan1_id INTEGER;
+  plan3_id INTEGER;
+  plan5_id INTEGER;
+  plan2_id INTEGER;
+BEGIN
+  -- Get user IDs
+  SELECT id INTO user1_id FROM users WHERE email = 'admin@investpro.com';
+  SELECT id INTO user2_id FROM users WHERE email = 'john@example.com';
+  SELECT id INTO user3_id FROM users WHERE email = 'jane@example.com';
+  
+  -- Get plan IDs
+  SELECT id INTO plan1_id FROM product_plans WHERE name = 'Starter Plan';
+  SELECT id INTO plan3_id FROM product_plans WHERE name = 'Bronze Booster';
+  SELECT id INTO plan5_id FROM product_plans WHERE name = 'Gold Income';
+  SELECT id INTO plan2_id FROM product_plans WHERE name = 'Smart Saver';
+  
+  -- Create sample investments
+  INSERT INTO investments (user_id, plan_id, plan_name, amount, purchase_date, status) VALUES
+  (user2_id, plan1_id, 'Starter Plan', 490.00, NOW() - INTERVAL '2 days', 'active'),
+  (user2_id, plan3_id, 'Bronze Booster', 1000.00, NOW() - INTERVAL '5 days', 'active'),
+  (user3_id, plan5_id, 'Gold Income', 2000.00, NOW() - INTERVAL '1 day', 'active'),
+  (user1_id, plan2_id, 'Smart Saver', 750.00, NOW() - INTERVAL '3 days', 'active');
+END $$;
 
--- Create sample pending recharges
-INSERT INTO recharges (user_id, amount, utr, request_date, status) VALUES
-(2, 1000.00, 'UTR123456789', NOW() - INTERVAL '1 hour', 'pending'),
-(3, 2000.00, 'UTR987654321', NOW() - INTERVAL '2 hours', 'pending');
+-- Create sample pending recharges (using actual user IDs)
+DO $$
+DECLARE
+  user1_id INTEGER;
+  user2_id INTEGER;
+BEGIN
+  -- Get user IDs
+  SELECT id INTO user1_id FROM users WHERE email = 'admin@investpro.com';
+  SELECT id INTO user2_id FROM users WHERE email = 'john@example.com';
+  
+  -- Create sample pending recharges
+  INSERT INTO recharges (user_id, amount, utr, request_date, status) VALUES
+  (user1_id, 1000.00, 'UTR123456789', NOW() - INTERVAL '1 hour', 'pending'),
+  (user2_id, 2000.00, 'UTR987654321', NOW() - INTERVAL '2 hours', 'pending');
+END $$;
 
--- Create sample pending withdrawals
-INSERT INTO withdrawals (user_id, amount, gst_amount, net_amount, method, details, request_date, status) VALUES
-(2, 500.00, 90.00, 410.00, 'bank', 'Account: 123456789, IFSC: ABCD1234567', NOW() - INTERVAL '30 minutes', 'pending'),
-(4, 300.00, 54.00, 246.00, 'upi', 'UPI ID: user@upi', NOW() - INTERVAL '45 minutes', 'pending');
+-- Create sample pending withdrawals (using actual user IDs)
+DO $$
+DECLARE
+  user1_id INTEGER;
+  user3_id INTEGER;
+BEGIN
+  -- Get user IDs
+  SELECT id INTO user1_id FROM users WHERE email = 'admin@investpro.com';
+  SELECT id INTO user3_id FROM users WHERE email = 'jane@example.com';
+  
+  -- Create sample pending withdrawals
+  INSERT INTO withdrawals (user_id, amount, gst_amount, net_amount, method, details, request_date, status) VALUES
+  (user1_id, 500.00, 90.00, 410.00, 'bank', 'Account: 123456789, IFSC: ABCD1234567', NOW() - INTERVAL '30 minutes', 'pending'),
+  (user3_id, 300.00, 54.00, 246.00, 'upi', 'UPI ID: user@upi', NOW() - INTERVAL '45 minutes', 'pending');
+END $$;
 
 -- Verify everything was created
 SELECT 'Database reset and recreated successfully' as status;
+SELECT 'Admin user created with email: admin@investpro.com' as status;
