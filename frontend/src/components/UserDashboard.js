@@ -20,12 +20,6 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (token) {
-      fetchDashboardData();
-    }
-  }, [token, fetchDashboardData]);
-
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -66,6 +60,12 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
       setLoading(false);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchDashboardData();
+    }
+  }, [token, fetchDashboardData]);
 
   const copyReferralLink = async () => {
     try {
