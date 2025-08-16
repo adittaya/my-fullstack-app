@@ -227,6 +227,12 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
           <i>🔗</i>
           <span>Refer</span>
         </div>
+        {userData?.is_admin && (
+          <div className="action-button" onClick={() => onViewChange('admin')}>
+            <i>🔒</i>
+            <span>Admin</span>
+          </div>
+        )}
       </div>
 
       {/* Trust Badges */}

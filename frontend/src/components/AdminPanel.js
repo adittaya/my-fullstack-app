@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Determine the API base URL based on environment
@@ -27,14 +27,9 @@ function AdminPanel({ token, onLogout }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('admin'); // 'admin' or 'admin-users'
 
-  // Fetch pending recharges and withdrawals on component mount
-  useEffect(() => {
-    fetchPendingRecharges();
-    fetchPendingWithdrawals();
-  }, []);
-
-  const fetchPendingRecharges = async () => {
+  const fetchPendingRecharges = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/recharges/pending`, {
         headers: {
@@ -45,9 +40,9 @@ function AdminPanel({ token, onLogout }) {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch pending recharges');
     }
-  };
+  }, [token]);
 
-  const fetchPendingWithdrawals = async () => {
+  const fetchPendingWithdrawals = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/withdrawals/pending`, {
         headers: {
@@ -58,7 +53,7 @@ function AdminPanel({ token, onLogout }) {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch pending withdrawals');
     }
-  };
+  }, [token]);
 
   const fetchUsers = async () => {
     try {
@@ -73,13 +68,19 @@ function AdminPanel({ token, onLogout }) {
     }
   };
 
+  // Fetch pending recharges and withdrawals on component mount
+  useEffect(() => {
+    fetchPendingRecharges();
+    fetchPendingWithdrawals();
+  }, [fetchPendingRecharges, fetchPendingWithdrawals]);
+
   const handleApproveRecharge = async (rechargeId) => {
     setError('');
     setSuccess('');
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/approve`, {}, {
+      await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/approve`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -99,7 +100,7 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/reject`, {}, {
+      await axios.post(`${API_BASE_URL}/api/admin/recharge/${rechargeId}/reject`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -119,7 +120,7 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/approve`, {}, {
+      await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/approve`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -139,7 +140,7 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/reject`, {}, {
+      await axios.post(`${API_BASE_URL}/api/admin/withdrawal/${withdrawalId}/reject`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -168,7 +169,7 @@ function AdminPanel({ token, onLogout }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/user/balance-adjust`, {
+      await axios.post(`${API_BASE_URL}/api/admin/user/balance-adjust`, {
         userId: selectedUser.id,
         amount: parseFloat(balanceAdjustment.amount),
         reason: balanceAdjustment.reason

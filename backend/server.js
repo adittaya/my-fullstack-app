@@ -121,6 +121,7 @@ app.post('/api/register', async (req, res) => {
           password, // In a real app, you should hash the password
           mobile,
           balance: 0,
+          is_admin: false, // Default to false for new users
           created_at: new Date()
         }
       ])
@@ -171,14 +172,14 @@ app.post('/api/login', async (req, res) => {
       // It's a mobile number
       userQuery = supabase
         .from('users')
-        .select('id, name, email, password')
+        .select('id, name, email, password, is_admin')
         .eq('mobile', identifier)
         .limit(1);
     } else {
       // It's an email
       userQuery = supabase
         .from('users')
-        .select('id, name, email, password')
+        .select('id, name, email, password, is_admin')
         .eq('email', identifier)
         .limit(1);
     }
@@ -204,7 +205,7 @@ app.post('/api/login', async (req, res) => {
 
     // Create JWT token
     const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email },
+      { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -215,7 +216,8 @@ app.post('/api/login', async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        is_admin: user.is_admin
       }
     });
   } catch (error) {
@@ -230,7 +232,7 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     // Fetch user data from Supabase
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, mobile, balance')
+      .select('id, name, email, mobile, balance, is_admin')
       .eq('id', req.user.id)
       .single();
 
@@ -723,6 +725,390 @@ app.get('/api/referral-link', authenticateToken, (req, res) => {
     });
   } catch (error) {
     console.error('Referral link generation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin middleware - checks if user is admin
+const authenticateAdmin = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', decoded.id)
+      .single();
+
+    if (error || !user) {
+      return res.status(403).json({ error: 'User not found' });
+    }
+
+    if (!user.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+};
+
+// Get pending recharges (admin)
+app.get('/api/admin/recharges/pending', authenticateAdmin, async (req, res) => {
+  try {
+    const { data: recharges, error } = await supabase
+      .from('recharges')
+      .select('*')
+      .eq('status', 'pending')
+      .order('request_date', { ascending: false });
+
+    if (error) {
+      console.error('Supabase recharges fetch error:', error);
+      return res.status(500).json({ error: 'Failed to fetch pending recharges' });
+    }
+
+    res.json({
+      message: 'Pending recharges fetched successfully',
+      recharges
+    });
+  } catch (error) {
+    console.error('Pending recharges fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get pending withdrawals (admin)
+app.get('/api/admin/withdrawals/pending', authenticateAdmin, async (req, res) => {
+  try {
+    const { data: withdrawals, error } = await supabase
+      .from('withdrawals')
+      .select('*')
+      .eq('status', 'pending')
+      .order('request_date', { ascending: false });
+
+    if (error) {
+      console.error('Supabase withdrawals fetch error:', error);
+      return res.status(500).json({ error: 'Failed to fetch pending withdrawals' });
+    }
+
+    res.json({
+      message: 'Pending withdrawals fetched successfully',
+      withdrawals
+    });
+  } catch (error) {
+    console.error('Pending withdrawals fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve recharge (admin)
+app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) => {
+  try {
+    const rechargeId = req.params.id;
+    const adminId = req.user.id;
+
+    // Get the recharge request
+    const { data: recharge, error: fetchError } = await supabase
+      .from('recharges')
+      .select('*')
+      .eq('id', rechargeId)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !recharge) {
+      return res.status(404).json({ error: 'Pending recharge request not found' });
+    }
+
+    // Update user balance
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', recharge.user_id)
+      .single();
+
+    if (userError) {
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+
+    const newBalance = parseFloat(user.balance) + parseFloat(recharge.amount);
+
+    // Update user balance
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ balance: newBalance })
+      .eq('id', recharge.user_id);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to update user balance' });
+    }
+
+    // Update recharge status
+    const { error: rechargeUpdateError } = await supabase
+      .from('recharges')
+      .update({ 
+        status: 'approved',
+        processed_date: new Date().toISOString()
+      })
+      .eq('id', rechargeId);
+
+    if (rechargeUpdateError) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ balance: user.balance })
+        .eq('id', recharge.user_id);
+      
+      return res.status(500).json({ error: 'Failed to update recharge status' });
+    }
+
+    res.json({
+      message: 'Recharge approved successfully',
+      newBalance
+    });
+  } catch (error) {
+    console.error('Recharge approval error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reject recharge (admin)
+app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) => {
+  try {
+    const rechargeId = req.params.id;
+
+    // Update recharge status
+    const { error: rechargeUpdateError } = await supabase
+      .from('recharges')
+      .update({ 
+        status: 'rejected',
+        processed_date: new Date().toISOString()
+      })
+      .eq('id', rechargeId)
+      .eq('status', 'pending');
+
+    if (rechargeUpdateError) {
+      return res.status(500).json({ error: 'Failed to update recharge status' });
+    }
+
+    res.json({
+      message: 'Recharge rejected successfully'
+    });
+  } catch (error) {
+    console.error('Recharge rejection error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve withdrawal (admin)
+app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res) => {
+  try {
+    const withdrawalId = req.params.id;
+
+    // Get the withdrawal request
+    const { data: withdrawal, error: fetchError } = await supabase
+      .from('withdrawals')
+      .select('*')
+      .eq('id', withdrawalId)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !withdrawal) {
+      return res.status(404).json({ error: 'Pending withdrawal request not found' });
+    }
+
+    // Update withdrawal status
+    const { error: withdrawalUpdateError } = await supabase
+      .from('withdrawals')
+      .update({ 
+        status: 'approved',
+        processed_date: new Date().toISOString()
+      })
+      .eq('id', withdrawalId);
+
+    if (withdrawalUpdateError) {
+      return res.status(500).json({ error: 'Failed to update withdrawal status' });
+    }
+
+    res.json({
+      message: 'Withdrawal approved successfully'
+    });
+  } catch (error) {
+    console.error('Withdrawal approval error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reject withdrawal (admin)
+app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res) => {
+  try {
+    const withdrawalId = req.params.id;
+
+    // Get the withdrawal request
+    const { data: withdrawal, error: fetchError } = await supabase
+      .from('withdrawals')
+      .select('*')
+      .eq('id', withdrawalId)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !withdrawal) {
+      return res.status(404).json({ error: 'Pending withdrawal request not found' });
+    }
+
+    // Refund the amount to user's balance
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', withdrawal.user_id)
+      .single();
+
+    if (userError) {
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+
+    const newBalance = parseFloat(user.balance) + parseFloat(withdrawal.amount);
+
+    // Update user balance
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ balance: newBalance })
+      .eq('id', withdrawal.user_id);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to update user balance' });
+    }
+
+    // Update withdrawal status
+    const { error: withdrawalUpdateError } = await supabase
+      .from('withdrawals')
+      .update({ 
+        status: 'rejected',
+        processed_date: new Date().toISOString()
+      })
+      .eq('id', withdrawalId);
+
+    if (withdrawalUpdateError) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ balance: user.balance })
+        .eq('id', withdrawal.user_id);
+      
+      return res.status(500).json({ error: 'Failed to update withdrawal status' });
+    }
+
+    res.json({
+      message: 'Withdrawal rejected successfully',
+      newBalance
+    });
+  } catch (error) {
+    console.error('Withdrawal rejection error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Search users (admin)
+app.get('/api/admin/users/search', authenticateAdmin, async (req, res) => {
+  try {
+    const query = req.query.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    // Search users by name, email, or mobile
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, name, email, mobile, balance')
+      .or(`name.ilike.%${query}%,email.ilike.%${query}%,mobile.ilike.%${query}%`);
+
+    if (error) {
+      console.error('Supabase users search error:', error);
+      return res.status(500).json({ error: 'Failed to search users' });
+    }
+
+    res.json({
+      message: 'Users searched successfully',
+      users
+    });
+  } catch (error) {
+    console.error('Users search error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Adjust user balance (admin)
+app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) => {
+  try {
+    const { userId, amount, reason } = req.body;
+    const adminId = req.user.id;
+
+    // Validate input
+    if (!userId || amount === undefined || !reason) {
+      return res.status(400).json({ error: 'User ID, amount, and reason are required' });
+    }
+
+    // Get user
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Calculate new balance
+    const newBalance = parseFloat(user.balance) + parseFloat(amount);
+
+    // Update user balance
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ balance: newBalance })
+      .eq('id', userId);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to update user balance' });
+    }
+
+    // Record balance adjustment
+    const { error: recordError } = await supabase
+      .from('balance_adjustments')
+      .insert([
+        {
+          user_id: userId,
+          amount: amount,
+          reason: reason,
+          admin_id: adminId,
+          adjustment_date: new Date().toISOString()
+        }
+      ]);
+
+    if (recordError) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ balance: user.balance })
+        .eq('id', userId);
+      
+      return res.status(500).json({ error: 'Failed to record balance adjustment' });
+    }
+
+    res.json({
+      message: 'User balance adjusted successfully',
+      newBalance
+    });
+  } catch (error) {
+    console.error('Balance adjustment error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

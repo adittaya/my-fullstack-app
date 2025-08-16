@@ -6,11 +6,12 @@ import InvestmentPlans from './components/InvestmentPlans';
 import WithdrawalForm from './components/WithdrawalForm';
 import RechargeForm from './components/RechargeForm';
 import Referral from './components/Referral';
+import AdminPanel from './components/AdminPanel';
 
 function App() {
   const [, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral'
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral', 'admin'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -305,6 +306,13 @@ function App() {
     />
   );
 
+  const renderAdminPanel = () => (
+    <AdminPanel 
+      token={token} 
+      onLogout={handleLogout}
+    />
+  );
+
   return (
     <div className="App">
       {!token ? (
@@ -321,6 +329,7 @@ function App() {
           {view === 'withdraw' && renderWithdrawalForm()}
           {view === 'recharge' && renderRechargeForm()}
           {view === 'referral' && renderReferral()}
+          {view === 'admin' && renderAdminPanel()}
         </>
       )}
     </div>
