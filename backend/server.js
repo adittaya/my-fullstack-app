@@ -835,10 +835,19 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       .single();
 
     if (userError) {
+      console.error('Supabase user fetch error:', userError);
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
     const newBalance = parseFloat(user.balance) + parseFloat(recharge.amount);
+    
+    // Log values for debugging
+    console.log('Updating user balance:', {
+      userId: recharge.user_id,
+      currentBalance: user.balance,
+      rechargeAmount: recharge.amount,
+      newBalance: newBalance
+    });
 
     // Update user balance
     const { error: updateError } = await supabase
@@ -847,11 +856,12 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       .eq('id', recharge.user_id);
 
     if (updateError) {
-      return res.status(500).json({ error: 'Failed to update user balance' });
+      console.error('Supabase balance update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
     }
 
     // Update recharge status
-    const { error: rechargeUpdateError } = await supabase
+    const { error: rechargeUpdateError, count } = await supabase
       .from('recharges')
       .update({ 
         status: 'approved',
@@ -861,32 +871,25 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       .eq('status', 'pending'); // Add this condition to ensure we only update pending recharges
 
     if (rechargeUpdateError) {
+      console.error('Supabase recharge update error:', rechargeUpdateError);
       // Rollback user balance update
       await supabase
         .from('users')
         .update({ balance: user.balance })
         .eq('id', recharge.user_id);
       
-      return res.status(500).json({ error: 'Failed to update recharge status' });
+      return res.status(500).json({ error: 'Failed to update recharge status: ' + rechargeUpdateError.message });
     }
 
     // Check if any rows were updated (recharge was actually pending)
-    if (rechargeUpdateError || rechargeUpdateError === null) {
-      const { count, error: countError } = await supabase
-        .from('recharges')
-        .select('*', { count: 'exact', head: true })
-        .eq('id', rechargeId)
-        .eq('status', 'approved');
+    if (count === 0) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ balance: user.balance })
+        .eq('id', recharge.user_id);
       
-      if (countError || count === 0) {
-        // Rollback user balance update
-        await supabase
-          .from('users')
-          .update({ balance: user.balance })
-          .eq('id', recharge.user_id);
-        
-        return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
-      }
+      return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
     }
 
     res.json({
@@ -895,7 +898,7 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     });
   } catch (error) {
     console.error('Recharge approval error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -917,7 +920,7 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
     }
 
     // Update recharge status
-    const { error: rechargeUpdateError } = await supabase
+    const { error: rechargeUpdateError, count } = await supabase
       .from('recharges')
       .update({ 
         status: 'rejected',
@@ -927,17 +930,12 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
       .eq('status', 'pending');
 
     if (rechargeUpdateError) {
-      return res.status(500).json({ error: 'Failed to update recharge status' });
+      console.error('Supabase recharge update error:', rechargeUpdateError);
+      return res.status(500).json({ error: 'Failed to update recharge status: ' + rechargeUpdateError.message });
     }
 
     // Check if any rows were updated (recharge was actually pending)
-    const { count, error: countError } = await supabase
-      .from('recharges')
-      .select('*', { count: 'exact', head: true })
-      .eq('id', rechargeId)
-      .eq('status', 'rejected');
-    
-    if (countError || count === 0) {
+    if (count === 0) {
       return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
     }
 
@@ -945,6 +943,10 @@ app.post('/api/admin/recharge/:id/reject', authenticateAdmin, async (req, res) =
       message: 'Recharge rejected successfully'
     });
   } catch (error) {
+    console.error('Recharge rejection error:', error);
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
     console.error('Recharge rejection error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -968,7 +970,7 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
     }
 
     // Update withdrawal status
-    const { error: withdrawalUpdateError } = await supabase
+    const { error: withdrawalUpdateError, count } = await supabase
       .from('withdrawals')
       .update({ 
         status: 'approved',
@@ -978,17 +980,12 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       .eq('status', 'pending'); // Add this condition to ensure we only update pending withdrawals
 
     if (withdrawalUpdateError) {
-      return res.status(500).json({ error: 'Failed to update withdrawal status' });
+      console.error('Supabase withdrawal update error:', withdrawalUpdateError);
+      return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
     }
 
     // Check if any rows were updated (withdrawal was actually pending)
-    const { count, error: countError } = await supabase
-      .from('withdrawals')
-      .select('*', { count: 'exact', head: true })
-      .eq('id', withdrawalId)
-      .eq('status', 'approved');
-    
-    if (countError || count === 0) {
+    if (count === 0) {
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
 
@@ -996,6 +993,10 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       message: 'Withdrawal approved successfully'
     });
   } catch (error) {
+    console.error('Withdrawal approval error:', error);
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
     console.error('Withdrawal approval error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1026,10 +1027,19 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       .single();
 
     if (userError) {
+      console.error('Supabase user fetch error:', userError);
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
     const newBalance = parseFloat(user.balance) + parseFloat(withdrawal.amount);
+    
+    // Log values for debugging
+    console.log('Refunding withdrawal amount to user balance:', {
+      userId: withdrawal.user_id,
+      currentBalance: user.balance,
+      withdrawalAmount: withdrawal.amount,
+      newBalance: newBalance
+    });
 
     // Update user balance
     const { error: updateError } = await supabase
@@ -1038,11 +1048,12 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       .eq('id', withdrawal.user_id);
 
     if (updateError) {
-      return res.status(500).json({ error: 'Failed to update user balance' });
+      console.error('Supabase balance update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
     }
 
     // Update withdrawal status
-    const { error: withdrawalUpdateError } = await supabase
+    const { error: withdrawalUpdateError, count } = await supabase
       .from('withdrawals')
       .update({ 
         status: 'rejected',
@@ -1052,23 +1063,18 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       .eq('status', 'pending'); // Add this condition to ensure we only update pending withdrawals
 
     if (withdrawalUpdateError) {
+      console.error('Supabase withdrawal update error:', withdrawalUpdateError);
       // Rollback user balance update
       await supabase
         .from('users')
         .update({ balance: user.balance })
         .eq('id', withdrawal.user_id);
       
-      return res.status(500).json({ error: 'Failed to update withdrawal status' });
+      return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
     }
 
     // Check if any rows were updated (withdrawal was actually pending)
-    const { count, error: countError } = await supabase
-      .from('withdrawals')
-      .select('*', { count: 'exact', head: true })
-      .eq('id', withdrawalId)
-      .eq('status', 'rejected');
-    
-    if (countError || count === 0) {
+    if (count === 0) {
       // Rollback user balance update
       await supabase
         .from('users')
@@ -1084,7 +1090,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     });
   } catch (error) {
     console.error('Withdrawal rejection error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -1142,6 +1148,15 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
 
     // Calculate new balance
     const newBalance = parseFloat(user.balance) + parseFloat(amount);
+    
+    // Log values for debugging
+    console.log('Adjusting user balance:', {
+      userId: userId,
+      currentBalance: user.balance,
+      adjustmentAmount: amount,
+      newBalance: newBalance,
+      reason: reason
+    });
 
     // Update user balance
     const { error: updateError } = await supabase
@@ -1150,7 +1165,8 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
       .eq('id', userId);
 
     if (updateError) {
-      return res.status(500).json({ error: 'Failed to update user balance' });
+      console.error('Supabase balance update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
     }
 
     // Record balance adjustment
@@ -1167,13 +1183,14 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
       ]);
 
     if (recordError) {
+      console.error('Supabase balance adjustment record error:', recordError);
       // Rollback user balance update
       await supabase
         .from('users')
         .update({ balance: user.balance })
         .eq('id', userId);
       
-      return res.status(500).json({ error: 'Failed to record balance adjustment' });
+      return res.status(500).json({ error: 'Failed to record balance adjustment: ' + recordError.message });
     }
 
     res.json({
@@ -1182,7 +1199,7 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     });
   } catch (error) {
     console.error('Balance adjustment error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
