@@ -157,14 +157,34 @@ app.post('/api/register', async (req, res) => {
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body; // identifier can be email or mobile
 
-    // Find user by email
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, name, email, password')
-      .eq('email', email)
-      .limit(1);
+    // Validate required fields
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Mobile/Email and password are required' });
+    }
+
+    let userQuery;
+    
+    // Check if identifier is mobile (numeric) or email
+    if (/^\d+$/.test(identifier)) {
+      // It's a mobile number
+      userQuery = supabase
+        .from('users')
+        .select('id, name, email, password')
+        .eq('mobile', identifier)
+        .limit(1);
+    } else {
+      // It's an email
+      userQuery = supabase
+        .from('users')
+        .select('id, name, email, password')
+        .eq('email', identifier)
+        .limit(1);
+    }
+
+    // Find user by mobile or email
+    const { data: users, error } = await userQuery;
 
     if (error) {
       console.error('Supabase fetch error:', error);
@@ -172,14 +192,14 @@ app.post('/api/login', async (req, res) => {
     }
 
     if (users.length === 0) {
-      return res.status(400).json({ error: 'Invalid email or password' });
+      return res.status(400).json({ error: 'Invalid mobile/email or password' });
     }
 
     const user = users[0];
 
     // Check password (in a real app, you should compare hashed passwords)
     if (user.password !== password) {
-      return res.status(400).json({ error: 'Invalid email or password' });
+      return res.status(400).json({ error: 'Invalid mobile/email or password' });
     }
 
     // Create JWT token

@@ -72,7 +72,7 @@ function App() {
     
     try {
       const response = await axios.post('/api/login', {
-        email: formData.email,
+        identifier: formData.email, // This can be mobile or email
         password: formData.password
       });
       
@@ -159,11 +159,11 @@ function App() {
       <form onSubmit={handleLogin}>
         <div>
           <input
-            type="email"
-            name="email"
-            placeholder="Email"
+            type="text"
+            name="identifier"
+            placeholder="Mobile Number or Email"
             value={formData.email}
-            onChange={handleInputChange}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
             required
           />
         </div>
@@ -216,20 +216,20 @@ function App() {
         </div>
         <div>
           <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
+            type="tel"
+            name="mobile"
+            placeholder="Mobile Number"
+            value={formData.mobile}
             onChange={handleInputChange}
             required
           />
         </div>
         <div>
           <input
-            type="tel"
-            name="mobile"
-            placeholder="Mobile Number"
-            value={formData.mobile}
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
             onChange={handleInputChange}
             required
           />
