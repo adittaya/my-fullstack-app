@@ -402,7 +402,7 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch user investments with plan details
+    // Fetch user investments
     const { data: investments, error } = await supabase
       .from('investments')
       .select(`
@@ -411,8 +411,7 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
         plan_name,
         amount,
         purchase_date,
-        status,
-        product_plans (daily_income, duration_days)
+        status
       `)
       .eq('user_id', userId)
       .order('purchase_date', { ascending: false });
@@ -422,16 +421,47 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch investments' });
     }
 
-    // Transform investments to include daily_income
-    const transformedInvestments = investments.map(investment => ({
-      ...investment,
-      daily_income: investment.product_plans?.daily_income || 0,
-      duration_days: investment.product_plans?.duration_days || 0
-    }));
+    // If we have investments, enhance them with plan details
+    if (investments && investments.length > 0) {
+      // Get all unique plan_ids from investments
+      const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
+      
+      if (planIds.length > 0) {
+        // Fetch plan details for all unique plan_ids
+        const { data: plans, error: plansError } = await supabase
+          .from('product_plans')
+          .select('id, daily_income, duration_days')
+          .in('id', planIds);
+        
+        if (!plansError && plans) {
+          // Create a map of plan_id to plan details
+          const planMap = {};
+          plans.forEach(plan => {
+            planMap[plan.id] = plan;
+          });
+          
+          // Enhance investments with plan details
+          const enhancedInvestments = investments.map(investment => {
+            const planDetails = planMap[investment.plan_id] || {};
+            return {
+              ...investment,
+              daily_income: planDetails.daily_income || 0,
+              duration_days: planDetails.duration_days || 0
+            };
+          });
+          
+          return res.json({
+            message: 'Investments fetched successfully',
+            investments: enhancedInvestments
+          });
+        }
+      }
+    }
 
+    // If no investments or no plan details, return basic investments data
     res.json({
       message: 'Investments fetched successfully',
-      investments: transformedInvestments
+      investments: investments || []
     });
   } catch (error) {
     console.error('Investments fetch error:', error);
