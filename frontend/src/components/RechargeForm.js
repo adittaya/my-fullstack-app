@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import qrCodeImage from '../assets/qr-code.png';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
@@ -94,7 +95,7 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
         <button onClick={copyUPIId}>Copy UPI ID</button>
         <p className="upi-id">7047571829@upi</p>
         <div className="qr-code-container">
-          <img src={require("../assets/qr-code.png")} alt="UPI Payment QR Code" className="qr-code" />
+          <img src={qrCodeImage} alt="UPI Payment QR Code" className="qr-code" />
         </div>
         {formData.amount && (
           <div className="amount-display">

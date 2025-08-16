@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import productListingImage from '../assets/product-listing.jpg';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
