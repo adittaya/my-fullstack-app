@@ -278,6 +278,44 @@
   border-radius: 8px;
 }
 
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.qr-code {
+  max-width: 200px;
+  height: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  background-color: white;
+}
+
+.upi-instructions {
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.upi-instructions h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.upi-id {
+  font-weight: bold;
+  font-size: 1.1em;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
 @media (max-width: 768px) {
   .App {
     padding: 10px;
@@ -299,5 +337,9 @@
   .dashboard .header {
     flex-direction: column;
     gap: 10px;
+  }
+  
+  .qr-code {
+    max-width: 150px;
   }
 }

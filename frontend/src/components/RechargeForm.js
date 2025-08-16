@@ -90,9 +90,8 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
         <p>Scan the QR code or use the UPI ID below:</p>
         <button onClick={copyUPIId}>Copy UPI ID</button>
         <p className="upi-id">7047571829@upi</p>
-        <div className="qr-placeholder">
-          <p>QR Code Image</p>
-          <p>(Image would be displayed here in production)</p>
+        <div className="qr-code-container">
+          <img src={require("../assets/qr-code.png")} alt="UPI Payment QR Code" className="qr-code" />
         </div>
       </div>
       
