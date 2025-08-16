@@ -162,22 +162,22 @@ function Referral({ token, userData, onBack }) {
 
       {/* Bottom Navigation */}
       <div className="bottom-nav">
-        <a href="#" className="nav-item" onClick={onBack}>
+        <button className="nav-item" onClick={onBack}>
           <i>🏠</i>
           <span>Home</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => alert('Products clicked')}>
+        </button>
+        <button className="nav-item" onClick={() => alert('Products clicked')}>
           <i>📋</i>
           <span>Products</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => alert('Wallet clicked')}>
+        </button>
+        <button className="nav-item" onClick={() => alert('Wallet clicked')}>
           <i>💰</i>
           <span>Wallet</span>
-        </a>
-        <a href="#" className="nav-item active">
+        </button>
+        <button className="nav-item active">
           <i>👤</i>
           <span>Profile</span>
-        </a>
+        </button>
       </div>
     </div>
   );

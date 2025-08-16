@@ -260,22 +260,22 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
 
       {/* Bottom Navigation */}
       <div className="bottom-nav">
-        <a href="#" className="nav-item active">
+        <button className="nav-item active">
           <i>🏠</i>
           <span>Home</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => onViewChange('plans')}>
+        </button>
+        <button className="nav-item" onClick={() => onViewChange('plans')}>
           <i>📋</i>
           <span>Products</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => onViewChange('recharge')}>
+        </button>
+        <button className="nav-item" onClick={() => onViewChange('recharge')}>
           <i>💰</i>
           <span>Wallet</span>
-        </a>
-        <a href="#" className="nav-item" onClick={copyReferralLink}>
+        </button>
+        <button className="nav-item" onClick={copyReferralLink}>
           <i>👤</i>
           <span>Profile</span>
-        </a>
+        </button>
       </div>
 
       {/* Floating Action Button */}

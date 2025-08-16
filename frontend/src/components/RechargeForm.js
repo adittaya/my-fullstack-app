@@ -190,22 +190,22 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
 
       {/* Bottom Navigation */}
       <div className="bottom-nav">
-        <a href="#" className="nav-item" onClick={onBack}>
+        <button className="nav-item" onClick={onBack}>
           <i>🏠</i>
           <span>Home</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => alert('Products clicked')}>
+        </button>
+        <button className="nav-item" onClick={() => alert('Products clicked')}>
           <i>📋</i>
           <span>Products</span>
-        </a>
-        <a href="#" className="nav-item active">
+        </button>
+        <button className="nav-item active">
           <i>💰</i>
           <span>Wallet</span>
-        </a>
-        <a href="#" className="nav-item" onClick={() => alert('Profile clicked')}>
+        </button>
+        <button className="nav-item" onClick={() => alert('Profile clicked')}>
           <i>👤</i>
           <span>Profile</span>
-        </a>
+        </button>
       </div>
     </div>
   );
