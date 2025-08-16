@@ -38,7 +38,10 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
 
     try {
       await axios.post(`${API_BASE_URL}/api/recharge`, 
-        formData, 
+        {
+          amount: parseFloat(formData.amount),
+          utr: formData.utr
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -93,6 +96,11 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
         <div className="qr-code-container">
           <img src={require("../assets/qr-code.png")} alt="UPI Payment QR Code" className="qr-code" />
         </div>
+        {formData.amount && (
+          <div className="amount-display">
+            <p><strong>Amount to Pay:</strong> ₹{formData.amount}</p>
+          </div>
+        )}
       </div>
       
       <form onSubmit={handleSubmit}>
@@ -127,6 +135,7 @@ function RechargeForm({ token, userData, onRechargeRequest, onBack }) {
       
       <div className="recharge-info">
         <p><strong>Note:</strong> After payment, enter the UTR number for admin approval.</p>
+        <p><strong>Minimum recharge amount:</strong> ₹100</p>
       </div>
     </div>
   );

@@ -232,45 +232,30 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 // Get product plans
 app.get('/api/product-plans', authenticateToken, async (req, res) => {
   try {
-    // Sample product plans - in a real app, these would come from a database
-    const productPlans = [
-      {
-        id: 1,
-        name: "Basic Plan",
-        price: 500,
-        dailyIncome: 50,
-        totalReturn: 1500,
-        durationDays: 30
-      },
-      {
-        id: 2,
-        name: "Silver Plan",
-        price: 1000,
-        dailyIncome: 120,
-        totalReturn: 3600,
-        durationDays: 30
-      },
-      {
-        id: 3,
-        name: "Gold Plan",
-        price: 5000,
-        dailyIncome: 650,
-        totalReturn: 19500,
-        durationDays: 30
-      },
-      {
-        id: 4,
-        name: "Platinum Plan",
-        price: 10000,
-        dailyIncome: 1400,
-        totalReturn: 42000,
-        durationDays: 30
-      }
-    ];
+    // Fetch product plans from Supabase database
+    const { data: productPlans, error } = await supabase
+      .from('product_plans')
+      .select('id, name, price, daily_income, total_return, duration_days')
+      .order('price', { ascending: true });
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return res.status(500).json({ error: 'Failed to fetch product plans' });
+    }
+
+    // Transform the data to match the frontend expectations
+    const transformedPlans = productPlans.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      dailyIncome: plan.daily_income,
+      totalReturn: plan.total_return,
+      durationDays: plan.duration_days
+    }));
 
     res.json({
       message: 'Product plans fetched successfully',
-      plans: productPlans
+      plans: transformedPlans
     });
   } catch (error) {
     console.error('Product plans fetch error:', error);
@@ -296,19 +281,23 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    // Fetch plan details
-    const productPlans = [
-      { id: 1, name: "Basic Plan", price: 500 },
-      { id: 2, name: "Silver Plan", price: 1000 },
-      { id: 3, name: "Gold Plan", price: 5000 },
-      { id: 4, name: "Platinum Plan", price: 10000 }
-    ];
+    // Fetch plan details from database
+    const { data: planData, error: planError } = await supabase
+      .from('product_plans')
+      .select('id, name, price')
+      .eq('id', planId)
+      .single();
 
-    const plan = productPlans.find(p => p.id == planId);
-    
-    if (!plan) {
+    if (planError) {
+      console.error('Supabase plan fetch error:', planError);
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
+
+    const plan = {
+      id: planData.id,
+      name: planData.name,
+      price: planData.price
+    };
 
     // Check if user has sufficient balance
     if (user.balance < plan.price) {
@@ -387,10 +376,18 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch user investments
+    // Fetch user investments with plan details
     const { data: investments, error } = await supabase
       .from('investments')
-      .select('*')
+      .select(`
+        id,
+        plan_id,
+        plan_name,
+        amount,
+        purchase_date,
+        status,
+        product_plans (daily_income, duration_days)
+      `)
       .eq('user_id', userId)
       .order('purchase_date', { ascending: false });
 
@@ -399,9 +396,16 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch investments' });
     }
 
+    // Transform investments to include daily_income
+    const transformedInvestments = investments.map(investment => ({
+      ...investment,
+      daily_income: investment.product_plans?.daily_income || 0,
+      duration_days: investment.product_plans?.duration_days || 0
+    }));
+
     res.json({
       message: 'Investments fetched successfully',
-      investments
+      investments: transformedInvestments
     });
   } catch (error) {
     console.error('Investments fetch error:', error);
@@ -455,8 +459,8 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Only one withdrawal allowed every 24 hours' });
     }
 
-    // Deduct 5% GST from amount
-    const gstAmount = amount * 0.05;
+    // Deduct 18% GST from amount
+    const gstAmount = amount * 0.18;
     const netAmount = amount - gstAmount;
 
     // Deduct amount from user balance

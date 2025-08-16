@@ -71,10 +71,16 @@ CREATE TABLE IF NOT EXISTS balance_adjustments (
 
 -- Insert sample product plans
 INSERT INTO product_plans (name, price, daily_income, total_return, duration_days) VALUES
-('Basic Plan', 500.00, 50.00, 1500.00, 30),
-('Silver Plan', 1000.00, 120.00, 3600.00, 30),
-('Gold Plan', 5000.00, 650.00, 19500.00, 30),
-('Platinum Plan', 10000.00, 1400.00, 42000.00, 30);
+('Starter Plan', 490.00, 80.00, 720.00, 9),
+('Smart Saver', 750.00, 85.00, 1190.00, 14),
+('Bronze Booster', 1000.00, 100.00, 1500.00, 15),
+('Silver Growth', 1500.00, 115.00, 2300.00, 20),
+('Gold Income', 2000.00, 135.00, 3105.00, 23),
+('Platinum Plan', 2500.00, 160.00, 3840.00, 24),
+('Elite Earning', 3000.00, 180.00, 4500.00, 25),
+('VIP Profiter', 3500.00, 200.00, 5400.00, 27),
+('Executive Growth', 4000.00, 220.00, 6160.00, 28),
+('Royal Investor', 5000.00, 250.00, 7500.00, 30);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
