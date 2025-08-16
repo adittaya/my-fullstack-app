@@ -146,6 +146,8 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
           <div className="summary-value">{formatCurrency(totalWithdrawn)}</div>
         </div>
       </div>
+      
+      {error && <div className="error-message">{error}</div>}
 
       {/* My Products */}
       <h3 className="section-title">
