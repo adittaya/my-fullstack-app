@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
   mobile VARCHAR(20),
   balance DECIMAL(10, 2) DEFAULT 0.00,
   is_admin BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Create product_plans table
@@ -104,7 +105,7 @@ $$ LANGUAGE plpgsql;
 
 -- Create function to decrement user balance
 CREATE OR REPLACE FUNCTION decrement_user_balance(user_id INTEGER, amount DECIMAL)
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN AS $
 DECLARE
   current_balance DECIMAL;
 BEGIN
@@ -119,4 +120,27 @@ BEGIN
     RETURN FALSE;
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
+
+-- Create trigger function to update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $
+BEGIN
+   NEW.updated_at = NOW();
+   RETURN NEW;
+END;
+$ LANGUAGE 'plpgsql';
+
+-- Create trigger to automatically update updated_at column on users table
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_users_updated_at'
+  ) THEN
+    CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END
+$;
