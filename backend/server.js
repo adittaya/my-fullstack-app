@@ -254,11 +254,28 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 // Get product plans
 app.get('/api/product-plans', authenticateToken, async (req, res) => {
   try {
-    // Fetch product plans from Supabase database
-    const { data: productPlans, error } = await supabase
-      .from('product_plans')
-      .select('id, name, category, price, daily_income, total_return, duration_days')
-      .order('price', { ascending: true });
+    let productPlans, error;
+    
+    // Try to fetch with category column first
+    try {
+      const result = await supabase
+        .from('product_plans')
+        .select('id, name, category, price, daily_income, total_return, duration_days')
+        .order('price', { ascending: true });
+      
+      productPlans = result.data;
+      error = result.error;
+    } catch (categoryError) {
+      // If category column doesn't exist, fetch without it
+      console.log('Category column not found, fetching without it');
+      const result = await supabase
+        .from('product_plans')
+        .select('id, name, price, daily_income, total_return, duration_days')
+        .order('price', { ascending: true });
+      
+      productPlans = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('Supabase fetch error:', error);
@@ -269,7 +286,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     const transformedPlans = productPlans.map(plan => ({
       id: plan.id,
       name: plan.name,
-      category: plan.category,
+      category: plan.category || 'general', // Default to 'general' if category doesn't exist
       price: plan.price,
       dailyIncome: plan.daily_income,
       totalReturn: plan.total_return,
@@ -333,18 +350,22 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     startOfMonth.setHours(0, 0, 0, 0);
 
     // Fetch the category of the plan being purchased
-    const { data: planDetails, error: planDetailsError } = await supabase
-      .from('product_plans')
-      .select('category')
-      .eq('id', planId)
-      .single();
+    // We'll handle cases where the category column might not exist
+    let planCategory = 'general'; // Default category
+    
+    try {
+      const { data: planDetails, error: planDetailsError } = await supabase
+        .from('product_plans')
+        .select('category')
+        .eq('id', planId)
+        .single();
 
-    if (planDetailsError) {
-      console.error('Supabase plan details fetch error:', planDetailsError);
-      return res.status(400).json({ error: 'Invalid plan selected' });
+      if (!planDetailsError && planDetails && planDetails.category) {
+        planCategory = planDetails.category;
+      }
+    } catch (categoryError) {
+      console.log('Category column not found or error fetching category, using default');
     }
-
-    const planCategory = planDetails.category;
 
     // Check if user already purchased a plan in this category this month
     const { data: existingPurchases, error: purchaseError } = await supabase
@@ -362,22 +383,25 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     if (existingPurchases.length > 0) {
       // Get plan details for all existing purchases
       const existingPlanIds = existingPurchases.map(purchase => purchase.plan_id);
-      const { data: existingPlanDetails, error: existingPlanError } = await supabase
-        .from('product_plans')
-        .select('id, category')
-        .in('id', existingPlanIds);
+      
+      try {
+        const { data: existingPlanDetails, error: existingPlanError } = await supabase
+          .from('product_plans')
+          .select('id, category')
+          .in('id', existingPlanIds);
 
-      if (existingPlanError) {
-        console.error('Supabase existing plan details fetch error:', existingPlanError);
-        return res.status(500).json({ error: 'Failed to check existing purchases' });
-      }
-
-      // Check if any existing purchase is in the same category
-      const sameCategoryPurchase = existingPlanDetails.find(plan => plan.category === planCategory);
-      if (sameCategoryPurchase) {
-        return res.status(400).json({ 
-          error: `You have already purchased a plan in the ${planCategory} category this month. You can purchase another plan in a different category.` 
-        });
+        if (!existingPlanError && existingPlanDetails) {
+          // Check if any existing purchase is in the same category
+          const sameCategoryPurchase = existingPlanDetails.find(plan => 
+            plan.category === planCategory);
+          if (sameCategoryPurchase) {
+            return res.status(400).json({ 
+              error: `You have already purchased a plan in the ${planCategory} category this month. You can purchase another plan in a different category.` 
+            });
+          }
+        }
+      } catch (existingPlanError) {
+        console.log('Error fetching existing plan details, skipping category check');
       }
     }
 
