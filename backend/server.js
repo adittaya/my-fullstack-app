@@ -1513,3 +1513,4 @@ app.listen(PORT, '0.0.0.0', () => {
 // Trigger redeploy for robust category feature
 // Trigger redeploy for detailed error logging
 // Trigger redeploy for category column fix
+// Trigger backend redeploy for financial features
