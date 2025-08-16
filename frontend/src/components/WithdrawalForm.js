@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 // Determine the API base URL based on environment
@@ -27,6 +27,32 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [withdrawableBalance, setWithdrawableBalance] = useState(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+
+  // Fetch withdrawable balance when component mounts
+  useEffect(() => {
+    const fetchWithdrawableBalance = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/financial-summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        setWithdrawableBalance(response.data.withdrawableBalance || 0);
+      } catch (err) {
+        console.error('Failed to fetch withdrawable balance:', err);
+        setError('Failed to fetch withdrawable balance');
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    if (token) {
+      fetchWithdrawableBalance();
+    }
+  }, [token]);
 
   const handleChange = (e) => {
     setFormData({
@@ -40,6 +66,21 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
     setError('');
     setSuccess('');
     setLoading(true);
+
+    // Validate amount
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      setError('Please enter a valid amount');
+      setLoading(false);
+      return;
+    }
+
+    // Validate against withdrawable balance
+    if (amount > withdrawableBalance) {
+      setError(`Amount exceeds withdrawable balance. Maximum withdrawable amount: ₹${withdrawableBalance.toFixed(2)}`);
+      setLoading(false);
+      return;
+    }
 
     // Validate form based on selected method
     if (formData.method === 'bank') {
@@ -56,13 +97,13 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
         setLoading(false);
         return;
       }
-      formData.details = `UPI: ${formData.upiId}`;
+      formData.details = `UPI ID: ${formData.upiId}`;
     }
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/withdraw`, 
         {
-          amount: parseFloat(formData.amount),
+          amount: amount,
           method: formData.method,
           details: formData.details
         },
@@ -72,9 +113,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
           }
         }
       );
-      
+
       setSuccess('Withdrawal request submitted successfully!');
-      // Reset form
       setFormData({
         amount: '',
         method: 'bank',
@@ -84,7 +124,16 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
         accountHolderName: '',
         upiId: ''
       });
-      // Call the parent function to update user data
+
+      // Refresh withdrawable balance
+      const financialResponse = await axios.get(`${API_BASE_URL}/api/financial-summary`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setWithdrawableBalance(financialResponse.data.withdrawableBalance || 0);
+
+      // Call parent function to update user data
       if (onWithdrawalRequest) {
         onWithdrawalRequest(response.data.newBalance);
       }
@@ -114,6 +163,12 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
       
       <div className="wallet-balance">
         <p>Available Balance: {formatCurrency(userData?.balance || 0)}</p>
+        {loadingBalance ? (
+          <p>Withdrawable Balance: Loading...</p>
+        ) : (
+          <p>Withdrawable Balance: {formatCurrency(withdrawableBalance)}</p>
+        )}
+        <p className="note">Note: You can only withdraw from your profit earnings</p>
       </div>
       
       {error && <div className="error">{error}</div>}
@@ -127,8 +182,13 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
             name="amount"
             value={formData.amount}
             onChange={handleChange}
-            min="100"
-            max={userData?.balance || 0}
+            min="1"
+            max={withdrawableBalance}
+            step="1"
+            placeholder={`Max: ₹${withdrawableBalance.toFixed(2)}`}
+            required
+          />
+        </div>
             placeholder="Minimum ₹100"
             required
           />

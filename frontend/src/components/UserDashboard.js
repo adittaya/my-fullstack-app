@@ -18,17 +18,27 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [withdrawableBalance, setWithdrawableBalance] = useState(0);
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
 
     try {
-      // Fetch investments
-      const investmentsRes = await axios.get(`${API_BASE_URL}/api/investments`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      // Fetch investments and financial summary
+      const [investmentsRes, financialSummaryRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/investments`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }),
+        axios.get(`${API_BASE_URL}/api/financial-summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+      ]);
 
       // Fetch transactions (recharges and withdrawals)
       const rechargesRes = await axios.get(`${API_BASE_URL}/api/recharges`, {
@@ -44,6 +54,12 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
       });
 
       setInvestments(investmentsRes.data.investments || []);
+      
+      // Set financial data
+      if (financialSummaryRes.data) {
+        setTotalProfit(financialSummaryRes.data.totalProfit || 0);
+        setWithdrawableBalance(financialSummaryRes.data.withdrawableBalance || 0);
+      }
 
       // Combine transactions and sort by date
       const allTransactions = [
@@ -54,6 +70,8 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
       setTransactions(allTransactions.slice(0, 10)); // Show only last 10 transactions
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
+      // Set error message to display to user
+      setError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -114,6 +132,14 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
         <div className="summary-card">
           <div className="summary-label">Total Invested</div>
           <div className="summary-value">{formatCurrency(totalInvested)}</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Total Profit</div>
+          <div className="summary-value">{formatCurrency(totalProfit)}</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Withdrawable Balance</div>
+          <div className="summary-value">{formatCurrency(withdrawableBalance)}</div>
         </div>
         <div className="summary-card">
           <div className="summary-label">Total Withdrawn</div>

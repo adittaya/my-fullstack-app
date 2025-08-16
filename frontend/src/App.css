@@ -889,6 +889,28 @@ body {
   margin-bottom: 25px;
 }
 
+.wallet-balance {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid var(--gold-primary);
+  border-radius: var(--border-radius-xl);
+  padding: 15px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.wallet-balance p {
+  margin: 5px 0;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.wallet-balance .note {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 10px;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
