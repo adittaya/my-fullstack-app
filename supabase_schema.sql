@@ -129,7 +129,7 @@ BEGIN
    NEW.updated_at = NOW();
    RETURN NEW;
 END;
-$ LANGUAGE 'plpgsql';
+$ LANGUAGE plpgsql;
 
 -- Create trigger to automatically update updated_at column on users table
 DO $
