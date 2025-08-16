@@ -16,9 +16,6 @@ CREATE TABLE IF NOT EXISTS users (
 -- Add is_admin column to users table (for existing databases)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
 
--- Create unique index for users email
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_email ON users(email);
-
 -- Create product_plans table
 CREATE TABLE IF NOT EXISTS product_plans (
   id SERIAL PRIMARY KEY,
@@ -29,9 +26,6 @@ CREATE TABLE IF NOT EXISTS product_plans (
   duration_days INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
-
--- Create unique index for product plans name
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_product_plan_name ON product_plans(name);
 
 -- Create investments table
 CREATE TABLE IF NOT EXISTS investments (
@@ -93,8 +87,7 @@ INSERT INTO product_plans (name, price, daily_income, total_return, duration_day
 ('Elite Earning', 3000.00, 180.00, 4500.00, 25),
 ('VIP Profiter', 3500.00, 200.00, 5400.00, 27),
 ('Executive Growth', 4000.00, 220.00, 6160.00, 28),
-('Royal Investor', 5000.00, 250.00, 7500.00, 30)
-ON CONFLICT DO NOTHING;
+('Royal Investor', 5000.00, 250.00, 7500.00, 30);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
