@@ -1268,6 +1268,32 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
   }
 });
 
+// Get user details (admin)
+app.get('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Get user details
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, mobile, balance, is_admin')
+      .eq('id', userId)
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'User details fetched successfully',
+      user
+    });
+  } catch (error) {
+    console.error('User details fetch error:', error);
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
