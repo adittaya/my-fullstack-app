@@ -257,7 +257,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     // Fetch product plans from Supabase database
     const { data: productPlans, error } = await supabase
       .from('product_plans')
-      .select('id, name, price, daily_income, total_return, duration_days')
+      .select('id, name, category, price, daily_income, total_return, duration_days')
       .order('price', { ascending: true });
 
     if (error) {
@@ -269,6 +269,7 @@ app.get('/api/product-plans', authenticateToken, async (req, res) => {
     const transformedPlans = productPlans.map(plan => ({
       id: plan.id,
       name: plan.name,
+      category: plan.category,
       price: plan.price,
       dailyIncome: plan.daily_income,
       totalReturn: plan.total_return,
@@ -326,14 +327,29 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    // Check if user already has a plan purchased this month
+    // Check if user already has a plan purchased in the same category this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
+    // Fetch the category of the plan being purchased
+    const { data: planDetails, error: planDetailsError } = await supabase
+      .from('product_plans')
+      .select('category')
+      .eq('id', planId)
+      .single();
+
+    if (planDetailsError) {
+      console.error('Supabase plan details fetch error:', planDetailsError);
+      return res.status(400).json({ error: 'Invalid plan selected' });
+    }
+
+    const planCategory = planDetails.category;
+
+    // Check if user already purchased a plan in this category this month
     const { data: existingPurchases, error: purchaseError } = await supabase
       .from('investments')
-      .select('id')
+      .select('id, plan_id')
       .eq('user_id', userId)
       .gte('purchase_date', startOfMonth.toISOString());
 
@@ -342,8 +358,27 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to check existing purchases' });
     }
 
+    // Get categories of existing purchases
     if (existingPurchases.length > 0) {
-      return res.status(400).json({ error: 'Only one plan can be purchased per month' });
+      // Get plan details for all existing purchases
+      const existingPlanIds = existingPurchases.map(purchase => purchase.plan_id);
+      const { data: existingPlanDetails, error: existingPlanError } = await supabase
+        .from('product_plans')
+        .select('id, category')
+        .in('id', existingPlanIds);
+
+      if (existingPlanError) {
+        console.error('Supabase existing plan details fetch error:', existingPlanError);
+        return res.status(500).json({ error: 'Failed to check existing purchases' });
+      }
+
+      // Check if any existing purchase is in the same category
+      const sameCategoryPurchase = existingPlanDetails.find(plan => plan.category === planCategory);
+      if (sameCategoryPurchase) {
+        return res.status(400).json({ 
+          error: `You have already purchased a plan in the ${planCategory} category this month. You can purchase another plan in a different category.` 
+        });
+      }
     }
 
     // Deduct plan price from user balance

@@ -64,6 +64,9 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
       if (onPlanPurchase) {
         onPlanPurchase(response.data.newBalance);
       }
+      
+      // Refresh plans to update availability
+      fetchProductPlans();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to purchase plan');
     } finally {
@@ -105,11 +108,26 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
               className={`plan-card ${expandedPlan === plan.id ? 'expanded' : ''}`}
               onClick={() => togglePlanDetails(plan.id)}
             >
-              <div className="plan-name">{plan.name}</div>
+              <div className="plan-header">
+                <div className="plan-name">{plan.name}</div>
+                <div className="plan-category">{plan.category}</div>
+              </div>
               <div className="plan-price">{formatCurrency(plan.price)}</div>
               
               <div className="plan-detail">
+                <i>📂</i>
+                <span>Category: </span>
+                <span className="plan-detail-value">{plan.category}</span>
+              </div>
+              
+              <div className="plan-detail">
                 <i>💰</i>
+                <span>Price: </span>
+                <span className="plan-detail-value">{formatCurrency(plan.price)}</span>
+              </div>
+              
+              <div className="plan-detail">
+                <i>💸</i>
                 <span>Daily Income: </span>
                 <span className="plan-detail-value">{formatCurrency(plan.dailyIncome)}</span>
               </div>
@@ -127,7 +145,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
               </div>
               
               <div className="plan-detail">
-                <i>💸</i>
+                <i>📊</i>
                 <span>Profit: </span>
                 <span className="plan-detail-value">{formatCurrency(plan.totalReturn - plan.price)}</span>
               </div>
