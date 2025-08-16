@@ -90,113 +90,198 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     .filter(t => t.type === 'withdrawal' && t.status === 'approved')
     .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
-    <div className="user-dashboard">
+    <div className="dashboard-container">
+      {/* Header */}
       <div className="header">
         <h2>Welcome, {userData?.name || 'User'}!</h2>
-        <button onClick={onLogout}>Logout</button>
+        <button onClick={onLogout}>✕</button>
       </div>
-      
-      {error && <div className="error">{error}</div>}
-      
+
       {/* Wallet Summary */}
       <div className="wallet-summary">
-        <h3>Wallet Summary</h3>
-        <div className="summary-grid">
-          <div className="summary-item">
-            <p className="summary-label">Current Balance</p>
-            <p className="summary-value">₹{userData?.balance || 0}</p>
-          </div>
-          <div className="summary-item">
-            <p className="summary-label">Total Invested</p>
-            <p className="summary-value">₹{totalInvested}</p>
-          </div>
-          <div className="summary-item">
-            <p className="summary-label">Total Withdrawn</p>
-            <p className="summary-value">₹{totalWithdrawn}</p>
-          </div>
-          <div className="summary-item">
-            <p className="summary-label">Share Link</p>
-            <button onClick={copyReferralLink} className="copy-link-btn">Copy Referral Link</button>
-          </div>
+        <div className="summary-card">
+          <div className="summary-label">Current Balance</div>
+          <div className="summary-value">{formatCurrency(userData?.balance || 0)}</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Total Invested</div>
+          <div className="summary-value">{formatCurrency(totalInvested)}</div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-label">Total Withdrawn</div>
+          <div className="summary-value">{formatCurrency(totalWithdrawn)}</div>
         </div>
       </div>
-      
+
       {/* My Products */}
-      <div className="my-products">
-        <h3>My Products</h3>
+      <h3 className="section-title">
+        <i>📊</i> My Products
+      </h3>
+      <div className="products-grid">
         {loading ? (
           <p>Loading investments...</p>
         ) : investments.length === 0 ? (
-          <p>No active products. <button onClick={() => onViewChange('plans')}>Buy a plan</button></p>
-        ) : (
-          <div className="products-grid">
-            {investments.map(investment => {
-              // Calculate days left
-              const purchaseDate = new Date(investment.purchase_date);
-              const endDate = new Date(purchaseDate);
-              endDate.setDate(endDate.getDate() + 30); // Assuming 30-day duration
-              const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-              
-              return (
-                <div key={investment.id} className="product-card">
-                  <h4>{investment.plan_name}</h4>
-                  <p>Days Left: {daysLeft > 0 ? daysLeft : 0}</p>
-                  <p>Daily Income: ₹{investment.daily_income || 0}</p>
-                  <p>Status: <span className={`status ${investment.status}`}>{investment.status}</span></p>
-                </div>
-              );
-            })}
+          <div className="summary-card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
+            <p>No active products.</p>
+            <button className="action-button" onClick={() => onViewChange('plans')}>
+              Buy a Plan
+            </button>
           </div>
+        ) : (
+          investments.map(investment => {
+            // Calculate days left
+            const purchaseDate = new Date(investment.purchase_date);
+            const endDate = new Date(purchaseDate);
+            endDate.setDate(endDate.getDate() + (investment.duration_days || 30));
+            const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+            
+            // Calculate progress percentage
+            const totalDuration = investment.duration_days || 30;
+            const elapsedDays = totalDuration - (daysLeft > 0 ? daysLeft : 0);
+            const progressPercentage = (elapsedDays / totalDuration) * 100;
+            
+            return (
+              <div key={investment.id} className="product-card">
+                <h4>{investment.plan_name}</h4>
+                <div className="product-info">
+                  <span>Days Left</span>
+                  <span>{daysLeft > 0 ? daysLeft : 0}</span>
+                </div>
+                <div className="product-info">
+                  <span>Daily Income</span>
+                  <span>{formatCurrency(investment.daily_income || 0)}</span>
+                </div>
+                <div className="progress-container">
+                  <div 
+                    className="progress-bar" 
+                    style={{ width: `${progressPercentage > 100 ? 100 : progressPercentage}%` }}
+                  ></div>
+                </div>
+                <div className="status-badge active">Active</div>
+              </div>
+            );
+          })
         )}
       </div>
-      
+
       {/* Transactions */}
-      <div className="transactions">
-        <h3>Recent Transactions</h3>
+      <h3 className="section-title">
+        <i>📋</i> Recent Transactions
+      </h3>
+      <div className="transactions-list">
         {loading ? (
           <p>Loading transactions...</p>
         ) : transactions.length === 0 ? (
           <p>No transactions yet.</p>
         ) : (
-          <div className="transactions-list">
-            {transactions.map(transaction => (
-              <div key={transaction.id} className="transaction-item">
-                <div className="transaction-info">
-                  <p className="transaction-type">{transaction.type === 'recharge' ? 'Recharge' : 'Withdrawal'}</p>
-                  <p className="transaction-amount">₹{transaction.amount}</p>
+          transactions.map(transaction => (
+            <div key={transaction.id} className="transaction-item">
+              <div className={`transaction-icon icon-${transaction.type}`}>
+                {transaction.type === 'recharge' ? '💰' : transaction.type === 'withdrawal' ? '📤' : '📈'}
+              </div>
+              <div className="transaction-details">
+                <div className="transaction-type">
+                  {transaction.type === 'recharge' ? 'Recharge' : 
+                   transaction.type === 'withdrawal' ? 'Withdrawal' : 'Daily Income'}
                 </div>
-                <div className="transaction-details">
-                  <p className="transaction-status">{transaction.status}</p>
-                  <p className="transaction-date">
-                    {new Date(transaction.request_date || transaction.created_at).toLocaleDateString()}
-                  </p>
+                <div className="transaction-amount">
+                  {formatCurrency(transaction.amount)}
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="transaction-details">
+                <div className={`transaction-status status-${transaction.status}`}>
+                  {transaction.status}
+                </div>
+                <div className="transaction-date">
+                  {new Date(transaction.request_date || transaction.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </div>
-      
+
       {/* Quick Actions */}
       <div className="quick-actions">
-        <button onClick={() => onViewChange('plans')}>View Plans</button>
-        <button onClick={() => onViewChange('withdraw')}>Withdraw</button>
-        <button onClick={() => onViewChange('recharge')}>Recharge</button>
-        <button onClick={copyReferralLink}>Share Referral</button>
-      </div>
-      
-      {/* Trust Elements */}
-      <div className="trust-elements">
-        <div className="trust-logos">
-          <span className="trust-badge">RBI Registered</span>
-          <span className="trust-badge">World Bank Approved</span>
-          <span className="trust-badge">ISO Certified</span>
-          <span className="trust-badge">10M+ users</span>
-          <span className="trust-badge">₹10 Crore Withdrawn</span>
-          <span className="trust-badge">Government Verified Seal</span>
+        <div className="action-button" onClick={() => onViewChange('plans')}>
+          <i>📋</i>
+          <span>Products</span>
+        </div>
+        <div className="action-button" onClick={() => onViewChange('recharge')}>
+          <i>💳</i>
+          <span>Recharge</span>
+        </div>
+        <div className="action-button" onClick={() => onViewChange('withdraw')}>
+          <i>💸</i>
+          <span>Withdraw</span>
+        </div>
+        <div className="action-button" onClick={copyReferralLink}>
+          <i>🔗</i>
+          <span>Refer</span>
         </div>
       </div>
+
+      {/* Trust Badges */}
+      <div className="trust-section">
+        <div className="trust-title">Trusted By</div>
+        <div className="trust-logos">
+          <div className="trust-badge">
+            <i>🏢</i>
+            <span>RBI Registered</span>
+          </div>
+          <div className="trust-badge">
+            <i>📜</i>
+            <span>ISO Certified</span>
+          </div>
+          <div className="trust-badge">
+            <i>🏦</i>
+            <span>World Bank Approved</span>
+          </div>
+          <div className="trust-badge">
+            <i>🛡️</i>
+            <span>Govt Verified</span>
+          </div>
+          <div className="trust-badge">
+            <i>👥</i>
+            <span>10M+ Users</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bottom-nav">
+        <a href="#" className="nav-item active">
+          <i>🏠</i>
+          <span>Home</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => onViewChange('plans')}>
+          <i>📋</i>
+          <span>Products</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => onViewChange('recharge')}>
+          <i>💰</i>
+          <span>Wallet</span>
+        </a>
+        <a href="#" className="nav-item" onClick={copyReferralLink}>
+          <i>👤</i>
+          <span>Profile</span>
+        </a>
+      </div>
+
+      {/* Floating Action Button */}
+      <button className="fab" onClick={() => onViewChange('recharge')}>
+        +
+      </button>
     </div>
   );
 }

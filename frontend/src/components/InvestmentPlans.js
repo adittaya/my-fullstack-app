@@ -19,6 +19,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [expandedPlan, setExpandedPlan] = useState(null);
 
   const fetchProductPlans = useCallback(async () => {
     setLoading(true);
@@ -70,42 +71,106 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
     }
   };
 
+  const togglePlanDetails = (planId) => {
+    setExpandedPlan(expandedPlan === planId ? null : planId);
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
     <div className="investment-plans">
+      {/* Header */}
       <div className="header">
         <h2>Investment Plans</h2>
-        <button onClick={onBack}>Back to Dashboard</button>
+        <button onClick={onBack}>✕</button>
       </div>
       
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
       
       {loading ? (
-        <div>Loading plans...</div>
+        <div style={{ textAlign: 'center', padding: '20px' }}>Loading plans...</div>
       ) : (
-        <div className="plans-grid">
+        <div className="plan-cards">
           {plans.map(plan => (
-            <div key={plan.id} className="plan-card">
-              <h3>{plan.name}</h3>
-              <p className="plan-price">₹{plan.price}</p>
-              <div className="plan-details">
-                <p>Daily Income: ₹{plan.dailyIncome}</p>
-                <p>Total Return: ₹{plan.totalReturn}</p>
-                <p>Duration: {plan.durationDays} days</p>
+            <div 
+              key={plan.id} 
+              className={`plan-card ${expandedPlan === plan.id ? 'expanded' : ''}`}
+              onClick={() => togglePlanDetails(plan.id)}
+            >
+              <div className="plan-name">{plan.name}</div>
+              <div className="plan-price">{formatCurrency(plan.price)}</div>
+              
+              <div className="plan-detail">
+                <i>💰</i>
+                <span>Daily Income: </span>
+                <span className="plan-detail-value">{formatCurrency(plan.dailyIncome)}</span>
               </div>
+              
+              <div className="plan-detail">
+                <i>📅</i>
+                <span>Duration: </span>
+                <span className="plan-detail-value">{plan.durationDays} days</span>
+              </div>
+              
+              <div className="plan-detail">
+                <i>📈</i>
+                <span>Total Return: </span>
+                <span className="plan-detail-value">{formatCurrency(plan.totalReturn)}</span>
+              </div>
+              
+              <div className="plan-detail">
+                <i>💸</i>
+                <span>Profit: </span>
+                <span className="plan-detail-value">{formatCurrency(plan.totalReturn - plan.price)}</span>
+              </div>
+              
               <button 
-                onClick={() => handlePurchasePlan(plan.id)}
+                className="buy-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePurchasePlan(plan.id);
+                }}
                 disabled={loading || (userData?.balance || 0) < plan.price}
               >
-                {loading ? 'Processing...' : 'Buy Now'}
+                {loading ? 'Processing...' : 
+                 (userData?.balance || 0) < plan.price ? 'Insufficient Balance' : 'Buy Now'}
               </button>
+              
               {(userData?.balance || 0) < plan.price && (
-                <p className="insufficient-balance">Insufficient balance</p>
+                <div className="insufficient-balance">Insufficient balance</div>
               )}
             </div>
           ))}
         </div>
       )}
+
+      {/* Bottom Navigation */}
+      <div className="bottom-nav">
+        <a href="#" className="nav-item" onClick={onBack}>
+          <i>🏠</i>
+          <span>Home</span>
+        </a>
+        <a href="#" className="nav-item active">
+          <i>📋</i>
+          <span>Products</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => window.location.reload()}>
+          <i>💰</i>
+          <span>Wallet</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => alert('Profile clicked')}>
+          <i>👤</i>
+          <span>Profile</span>
+        </a>
+      </div>
     </div>
   );
 }

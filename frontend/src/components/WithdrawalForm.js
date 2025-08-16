@@ -95,23 +95,33 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
     }
   };
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
     <div className="withdrawal-form">
+      {/* Header */}
       <div className="header">
         <h2>Request Withdrawal</h2>
-        <button onClick={onBack}>Back to Dashboard</button>
+        <button onClick={onBack}>✕</button>
       </div>
       
       <div className="wallet-balance">
-        <p>Available Balance: ₹{userData?.balance || 0}</p>
+        <p>Available Balance: {formatCurrency(userData?.balance || 0)}</p>
       </div>
       
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
       
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Amount (₹):</label>
+        <div className="form-group">
+          <label>Amount (₹)</label>
           <input
             type="number"
             name="amount"
@@ -119,12 +129,13 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
             onChange={handleChange}
             min="100"
             max={userData?.balance || 0}
+            placeholder="Minimum ₹100"
             required
           />
         </div>
         
-        <div>
-          <label>Method:</label>
+        <div className="form-group">
+          <label>Method</label>
           <select
             name="method"
             value={formData.method}
@@ -137,8 +148,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
         
         {formData.method === 'bank' ? (
           <>
-            <div>
-              <label>Bank Name:</label>
+            <div className="form-group">
+              <label>Bank Name</label>
               <input
                 type="text"
                 name="bankName"
@@ -148,8 +159,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
                 required
               />
             </div>
-            <div>
-              <label>IFSC Code:</label>
+            <div className="form-group">
+              <label>IFSC Code</label>
               <input
                 type="text"
                 name="ifscCode"
@@ -159,8 +170,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
                 required
               />
             </div>
-            <div>
-              <label>Account Number:</label>
+            <div className="form-group">
+              <label>Account Number</label>
               <input
                 type="text"
                 name="accountNumber"
@@ -170,8 +181,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
                 required
               />
             </div>
-            <div>
-              <label>Account Holder Name:</label>
+            <div className="form-group">
+              <label>Account Holder Name</label>
               <input
                 type="text"
                 name="accountHolderName"
@@ -183,8 +194,8 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
             </div>
           </>
         ) : (
-          <div>
-            <label>UPI ID:</label>
+          <div className="form-group">
+            <label>UPI ID</label>
             <input
               type="text"
               name="upiId"
@@ -196,14 +207,34 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
           </div>
         )}
         
-        <button type="submit" disabled={loading}>
-          {loading ? 'Processing...' : 'Request Withdrawal'}
+        <button type="submit" className="withdraw-button" disabled={loading}>
+          {loading ? 'Processing...' : 'Withdraw Now'}
         </button>
       </form>
       
-      <div className="withdrawal-info">
+      <div className="recharge-info">
         <p><strong>Note:</strong> Only one withdrawal allowed every 24 hours. 18% GST will be deducted.</p>
         <p><strong>Minimum withdrawal amount:</strong> ₹100</p>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bottom-nav">
+        <a href="#" className="nav-item" onClick={onBack}>
+          <i>🏠</i>
+          <span>Home</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => alert('Products clicked')}>
+          <i>📋</i>
+          <span>Products</span>
+        </a>
+        <a href="#" className="nav-item active">
+          <i>💰</i>
+          <span>Wallet</span>
+        </a>
+        <a href="#" className="nav-item" onClick={() => alert('Profile clicked')}>
+          <i>👤</i>
+          <span>Profile</span>
+        </a>
       </div>
     </div>
   );

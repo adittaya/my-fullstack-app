@@ -152,96 +152,112 @@ function App() {
   };
 
   const renderLoginForm = () => (
-    <div className="auth-form">
-      <h2>Login</h2>
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
-      <form onSubmit={handleLogin}>
-        <div>
-          <input
-            type="text"
-            name="identifier"
-            placeholder="Mobile Number or Email"
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-            required
-          />
+    <div className="auth-page">
+      <div className="auth-form-container">
+        <div className="auth-header">
+          <h1>InvestPro</h1>
+          <p>Secure Investment Platform</p>
         </div>
-        <div>
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleInputChange}
-            required
-          />
+        <div className="auth-form">
+          <h2>Login</h2>
+          {error && <div className="error">{error}</div>}
+          {success && <div className="success">{success}</div>}
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <input
+                type="text"
+                name="identifier"
+                placeholder="Mobile Number or Email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
         </div>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p>
-        Don't have an account?{' '}
-        <button onClick={() => setView('register')}>Register</button>
-      </p>
+        <div className="auth-footer">
+          Don't have an account?{' '}
+          <button onClick={() => setView('register')}>Register</button>
+        </div>
+      </div>
     </div>
   );
 
   const renderRegisterForm = () => (
-    <div className="auth-form">
-      <h2>Register</h2>
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
-      <form onSubmit={handleRegister}>
-        <div>
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleInputChange}
-            required
-          />
+    <div className="auth-page">
+      <div className="auth-form-container">
+        <div className="auth-header">
+          <h1>InvestPro</h1>
+          <p>Start your investment journey</p>
         </div>
-        <div>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-          />
+        <div className="auth-form">
+          <h2>Register</h2>
+          {error && <div className="error">{error}</div>}
+          {success && <div className="success">{success}</div>}
+          <form onSubmit={handleRegister}>
+            <div className="form-group">
+              <input
+                type="text"
+                name="name"
+                placeholder="Full Name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="tel"
+                name="mobile"
+                placeholder="Mobile Number"
+                value={formData.mobile}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Registering...' : 'Register'}
+            </button>
+          </form>
         </div>
-        <div>
-          <input
-            type="tel"
-            name="mobile"
-            placeholder="Mobile Number"
-            value={formData.mobile}
-            onChange={handleInputChange}
-            required
-          />
+        <div className="auth-footer">
+          Already have an account?{' '}
+          <button onClick={() => setView('login')}>Login</button>
         </div>
-        <div>
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
-      <p>
-        Already have an account?{' '}
-        <button onClick={() => setView('login')}>Login</button>
-      </p>
+      </div>
     </div>
   );
 
@@ -291,57 +307,22 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Investment Platform</h1>
-      </header>
-      
-      <main>
-        {!token ? (
-          // Non-authenticated views
-          <>
-            {view === 'login' && renderLoginForm()}
-            {view === 'register' && renderRegisterForm()}
-            
-            {/* Marketing section for non-logged in users */}
-            <div className="marketing-section">
-              <div className="marketing-stats">
-                <h2>Platform Statistics</h2>
-                <div className="stats-grid">
-                  <div className="stat-item">
-                    <p className="stat-value">10,000,000</p>
-                    <p className="stat-label">Total Users</p>
-                  </div>
-                  <div className="stat-item">
-                    <p className="stat-value">1,000,000</p>
-                    <p className="stat-label">Daily Active</p>
-                  </div>
-                  <div className="stat-item">
-                    <p className="stat-value">₹10 Crore</p>
-                    <p className="stat-label">Total Withdrawn</p>
-                  </div>
-                  <div className="stat-item">
-                    <p className="stat-value">98.5%</p>
-                    <p className="stat-label">Success Rate</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="anniversary-badge">
-                <h3>5 YEARS ANNIVERSARY ACHIEVEMENT</h3>
-              </div>
-            </div>
-          </>
-        ) : (
-          // Authenticated views
-          <>
-            {view === 'dashboard' && renderDashboard()}
-            {view === 'plans' && renderInvestmentPlans()}
-            {view === 'withdraw' && renderWithdrawalForm()}
-            {view === 'recharge' && renderRechargeForm()}
-            {view === 'referral' && renderReferral()}
-          </>
-        )}
-      </main>
+      {!token ? (
+        // Non-authenticated views
+        <>
+          {view === 'login' && renderLoginForm()}
+          {view === 'register' && renderRegisterForm()}
+        </>
+      ) : (
+        // Authenticated views
+        <>
+          {view === 'dashboard' && renderDashboard()}
+          {view === 'plans' && renderInvestmentPlans()}
+          {view === 'withdraw' && renderWithdrawalForm()}
+          {view === 'recharge' && renderRechargeForm()}
+          {view === 'referral' && renderReferral()}
+        </>
+      )}
     </div>
   );
 }
