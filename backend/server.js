@@ -846,19 +846,42 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       userId: recharge.user_id,
       currentBalance: user.balance,
       rechargeAmount: recharge.amount,
-      newBalance: newBalance
+      calculatedNewBalance: newBalance,
+      typeofCurrentBalance: typeof user.balance,
+      typeofRechargeAmount: typeof recharge.amount,
+      typeofNewBalance: typeof newBalance
     });
 
     // Update user balance
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ balance: newBalance })
-      .eq('id', recharge.user_id);
+      .eq('id', recharge.user_id)
+      .select();
+
+    console.log('Supabase update response:', {
+      data: updateData,
+      error: updateError
+    });
 
     if (updateError) {
       console.error('Supabase balance update error:', updateError);
-      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
+      return res.status(500).json({ 
+        error: 'Failed to update user balance: ' + updateError.message,
+        details: {
+          userId: recharge.user_id,
+          currentBalance: user.balance,
+          rechargeAmount: recharge.amount,
+          newBalance: newBalance
+        }
+      });
     }
+    
+    // Log successful update
+    console.log('User balance updated successfully:', {
+      userId: recharge.user_id,
+      newBalance: newBalance
+    });
 
     // Update recharge status
     const { error: rechargeUpdateError, count } = await supabase
@@ -1034,19 +1057,42 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       userId: withdrawal.user_id,
       currentBalance: user.balance,
       withdrawalAmount: withdrawal.amount,
-      newBalance: newBalance
+      calculatedNewBalance: newBalance,
+      typeofCurrentBalance: typeof user.balance,
+      typeofWithdrawalAmount: typeof withdrawal.amount,
+      typeofNewBalance: typeof newBalance
     });
 
     // Update user balance
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ balance: newBalance })
-      .eq('id', withdrawal.user_id);
+      .eq('id', withdrawal.user_id)
+      .select();
+
+    console.log('Supabase update response:', {
+      data: updateData,
+      error: updateError
+    });
 
     if (updateError) {
       console.error('Supabase balance update error:', updateError);
-      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
+      return res.status(500).json({ 
+        error: 'Failed to update user balance: ' + updateError.message,
+        details: {
+          userId: withdrawal.user_id,
+          currentBalance: user.balance,
+          withdrawalAmount: withdrawal.amount,
+          newBalance: newBalance
+        }
+      });
     }
+    
+    // Log successful update
+    console.log('User balance updated successfully:', {
+      userId: withdrawal.user_id,
+      newBalance: newBalance
+    });
 
     // Update withdrawal status
     const { error: withdrawalUpdateError, count } = await supabase
@@ -1150,20 +1196,43 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
       userId: userId,
       currentBalance: user.balance,
       adjustmentAmount: amount,
-      newBalance: newBalance,
+      calculatedNewBalance: newBalance,
+      typeofCurrentBalance: typeof user.balance,
+      typeofAdjustmentAmount: typeof amount,
+      typeofNewBalance: typeof newBalance,
       reason: reason
     });
 
     // Update user balance
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ balance: newBalance })
-      .eq('id', userId);
+      .eq('id', userId)
+      .select();
+
+    console.log('Supabase update response:', {
+      data: updateData,
+      error: updateError
+    });
 
     if (updateError) {
       console.error('Supabase balance update error:', updateError);
-      return res.status(500).json({ error: 'Failed to update user balance: ' + updateError.message });
+      return res.status(500).json({ 
+        error: 'Failed to update user balance: ' + updateError.message,
+        details: {
+          userId: userId,
+          currentBalance: user.balance,
+          adjustmentAmount: amount,
+          newBalance: newBalance
+        }
+      });
     }
+    
+    // Log successful update
+    console.log('User balance updated successfully:', {
+      userId: userId,
+      newBalance: newBalance
+    });
 
     // Record balance adjustment
     const { error: recordError } = await supabase
