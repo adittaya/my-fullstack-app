@@ -336,4 +336,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;// Trigger frontend redeploy for category feature
