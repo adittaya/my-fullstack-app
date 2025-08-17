@@ -87,14 +87,15 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
 
   // Calculate investment progress percentage
   const calculateProgress = (investment) => {
-    if (!investment || !investment.plan_id) return 0;
+    if (!investment || !investment.duration_days || investment.duration_days <= 0) return 0;
     
-    // This would need to be adjusted based on your actual plan data structure
-    // For now, we'll use a placeholder calculation
-    const daysTotal = investment.plan_id * 2 || 30; // Placeholder
+    const totalDays = investment.duration_days;
     const daysLeft = investment.days_left || 0;
-    const daysPassed = daysTotal - daysLeft;
-    return Math.min(100, Math.max(0, (daysPassed / daysTotal) * 100));
+    const daysPassed = totalDays - daysLeft;
+    
+    // Calculate progress as percentage
+    const progress = (daysPassed / totalDays) * 100;
+    return Math.min(100, Math.max(0, progress));
   };
 
   
@@ -265,7 +266,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
                         Daily Income
                       </p>
                       <p style={{ margin: '0', color: 'var(--text-primary)', fontWeight: '600' }}>
-                        ₹250
+                        {formatCurrency(investment.daily_income)}
                       </p>
                     </div>
                     <div>
@@ -281,7 +282,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
                         ROI
                       </p>
                       <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
-                        12%
+                        {investment.duration_days ? Math.round(((investment.daily_income * investment.duration_days) / investment.amount) * 100) : 0}%
                       </p>
                     </div>
                   </div>
@@ -308,10 +309,11 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
                     display: 'flex', 
                     justifyContent: 'space-between',
                     fontSize: '12px',
-                    color: 'var(--text-secondary)'
+                    color: 'var(--text-secondary)',
+                    marginBottom: '8px'
                   }}>
                     <span>Progress</span>
-                    <span>{Math.round(progress)}%</span>
+                    <span>{investment.duration_days ? (investment.duration_days - investment.days_left) : 0}/{investment.duration_days || 0} days</span>
                   </div>
                 </div>
               );
