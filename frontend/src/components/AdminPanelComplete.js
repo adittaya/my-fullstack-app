@@ -248,23 +248,40 @@ function AdminPanel({ token, onLogout }) {
     });
   };
 
+  // Calculate platform statistics
+  const calculateStats = () => {
+    const totalUsers = users.length;
+    const totalRecharges = pendingRecharges.reduce((sum, recharge) => sum + recharge.amount, 0);
+    const totalWithdrawals = pendingWithdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+    const pendingRequests = pendingRecharges.length + pendingWithdrawals.length;
+    
+    return {
+      totalUsers,
+      totalRecharges,
+      totalWithdrawals,
+      pendingRequests
+    };
+  };
+
+  const stats = calculateStats();
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <h1>Admin Panel</h1>
+        <h1>Admin Dashboard</h1>
         <div className="admin-actions">
           <button 
             className={view === 'admin' ? 'active' : ''}
             onClick={() => setView('admin')}
           >
-            Pending Requests
+            Requests
           </button>
           <button 
             className={view === 'admin-users' && selectedUser ? 'active' : ''}
             onClick={() => setView('admin-users')}
             disabled={!selectedUser}
           >
-            {selectedUser ? selectedUser.name : 'User Management'}
+            {selectedUser ? selectedUser.name : 'Users'}
           </button>
           <button onClick={onLogout}>Logout</button>
         </div>
@@ -272,6 +289,44 @@ function AdminPanel({ token, onLogout }) {
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
+
+      {view === 'admin' && (
+        <>
+          {/* Daily Recycling Button */}
+          <div className="daily-recycle-section">
+            <h2>Daily Plan Recycling</h2>
+            <button 
+              className="recycle-btn"
+              onClick={handleDailyRecycle}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Run Daily Plan Recycling'}
+            </button>
+            <p className="recycle-info">
+              This will distribute daily income from all active investment plans to users' wallets.
+            </p>
+          </div>
+
+          {/* Platform Statistics */}
+          <div className="stats-card">
+            <h2>Platform Statistics</h2>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <div className="stat-label">Total Users</div>
+                <div className="stat-value">{stats.totalUsers}</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Pending Requests</div>
+                <div className="stat-value">{stats.pendingRequests}</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Total Recharges</div>
+                <div className="stat-value">{formatCurrency(stats.totalRecharges)}</div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {view === 'admin' && (
         <div className="admin-requests">

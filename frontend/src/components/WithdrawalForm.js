@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import './WithdrawalForm.css';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
@@ -14,131 +15,119 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
-  const [formData, setFormData] = useState({
-    amount: '',
-    method: 'bank', // 'bank' or 'upi'
-    bankName: '',
-    ifscCode: '',
+function WithdrawalForm({ token, userData, onBack }) {
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState('bank'); // 'bank' or 'upi'
+  const [bankDetails, setBankDetails] = useState({
     accountNumber: '',
-    accountHolderName: '',
-    upiId: ''
+    ifscCode: '',
+    accountHolderName: ''
   });
+  const [upiId, setUpiId] = useState('');
+  const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [withdrawableBalance, setWithdrawableBalance] = useState(0);
-  const [loadingBalance, setLoadingBalance] = useState(true);
 
-  // Fetch withdrawable balance when component mounts
-  useEffect(() => {
-    const fetchWithdrawableBalance = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/financial-summary`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        setWithdrawableBalance(response.data.withdrawableBalance || 0);
-      } catch (err) {
-        console.error('Failed to fetch withdrawable balance:', err);
-        setError('Failed to fetch withdrawable balance');
-      } finally {
-        setLoadingBalance(false);
-      }
-    };
-
-    if (token) {
-      fetchWithdrawableBalance();
+  const fetchWithdrawals = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/withdrawals`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setWithdrawals(response.data.withdrawals || []);
+    } catch (err) {
+      console.error('Failed to fetch withdrawals:', err);
     }
   }, [token]);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  useEffect(() => {
+    fetchWithdrawals();
+  }, [fetchWithdrawals]);
+
+  // Calculate GST (18%)
+  const calculateGST = (amount) => {
+    return amount * 0.18;
   };
 
-  const handleSubmit = async (e) => {
+  // Calculate net amount (amount - GST)
+  const calculateNetAmount = (amount) => {
+    return amount - calculateGST(amount);
+  };
+
+  const handleAmountChange = (e) => {
+    const value = e.target.value;
+    // Only allow numeric input with up to 2 decimal places
+    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+      setAmount(value);
+    }
+  };
+
+  const handleBankDetailsChange = (field, value) => {
+    setBankDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleRequestWithdrawal = async (e) => {
     e.preventDefault();
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+    
+    const amountFloat = parseFloat(amount);
+    
+    if (amountFloat > (userData?.balance || 0)) {
+      setError('Insufficient balance');
+      return;
+    }
+    
+    if (method === 'bank') {
+      if (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.accountHolderName) {
+        setError('Please fill in all bank details');
+        return;
+      }
+    } else if (method === 'upi') {
+      if (!upiId) {
+        setError('Please enter UPI ID');
+        return;
+      }
+    }
+
+    setLoading(true);
     setError('');
     setSuccess('');
-    setLoading(true);
-
-    // Validate amount
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      setError('Please enter a valid amount');
-      setLoading(false);
-      return;
-    }
-
-    // Validate against withdrawable balance
-    if (amount > withdrawableBalance) {
-      setError(`Amount exceeds withdrawable balance. Maximum withdrawable amount: ₹${withdrawableBalance.toFixed(2)}`);
-      setLoading(false);
-      return;
-    }
-
-    // Validate form based on selected method
-    if (formData.method === 'bank') {
-      if (!formData.bankName || !formData.ifscCode || !formData.accountNumber || !formData.accountHolderName) {
-        setError('Please fill in all bank details');
-        setLoading(false);
-        return;
-      }
-      // Format bank details
-      formData.details = `Bank: ${formData.bankName}, IFSC: ${formData.ifscCode}, Account: ${formData.accountNumber}, Holder: ${formData.accountHolderName}`;
-    } else {
-      if (!formData.upiId) {
-        setError('Please enter UPI ID');
-        setLoading(false);
-        return;
-      }
-      formData.details = `UPI ID: ${formData.upiId}`;
-    }
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/withdraw`, 
         {
-          amount: amount,
-          method: formData.method,
-          details: formData.details
-        },
+          amount: amountFloat,
+          method,
+          details: method === 'bank' ? bankDetails : upiId
+        }, 
         {
           headers: {
             Authorization: `Bearer ${token}`
           }
         }
       );
-
+      
       setSuccess('Withdrawal request submitted successfully!');
-      setFormData({
-        amount: '',
-        method: 'bank',
-        bankName: '',
-        ifscCode: '',
+      setAmount('');
+      setBankDetails({
         accountNumber: '',
-        accountHolderName: '',
-        upiId: ''
+        ifscCode: '',
+        accountHolderName: ''
       });
-
-      // Refresh withdrawable balance
-      const financialResponse = await axios.get(`${API_BASE_URL}/api/financial-summary`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setWithdrawableBalance(financialResponse.data.withdrawableBalance || 0);
-
-      // Call parent function to update user data
-      if (onWithdrawalRequest) {
-        onWithdrawalRequest(response.data.newBalance);
-      }
+      setUpiId('');
+      fetchWithdrawals(); // Refresh withdrawals list
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to submit withdrawal request');
+      setError(err.response?.data?.error || 'Failed to request withdrawal');
     } finally {
       setLoading(false);
     }
@@ -153,145 +142,206 @@ function WithdrawalForm({ token, userData, onWithdrawalRequest, onBack }) {
     }).format(amount);
   };
 
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
-    <div className="withdrawal-form">
+    <div className="withdrawal-container">
       {/* Header */}
-      <div className="header">
-        <h2>Request Withdrawal</h2>
-        <button onClick={onBack}>✕</button>
-      </div>
-      
-      <div className="wallet-balance">
-        <p>Available Balance: {formatCurrency(userData?.balance || 0)}</p>
-        {loadingBalance ? (
-          <p>Withdrawable Balance: Loading...</p>
-        ) : (
-          <p>Withdrawable Balance: {formatCurrency(withdrawableBalance)}</p>
-        )}
-        <p className="note">Note: You can only withdraw from your profit earnings</p>
-      </div>
-      
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Amount (₹)</label>
-          <input
-            type="number"
-            name="amount"
-            value={formData.amount}
-            onChange={handleChange}
-            min="1"
-            max={withdrawableBalance}
-            step="1"
-            placeholder={`Max: ₹${withdrawableBalance.toFixed(2)}`}
-            required
-          />
-        </div>
-        
-        <div className="form-group">
-          <label>Method</label>
-          <select
-            name="method"
-            value={formData.method}
-            onChange={handleChange}
-          >
-            <option value="bank">Bank Transfer</option>
-            <option value="upi">UPI</option>
-          </select>
-        </div>
-        
-        {formData.method === 'bank' ? (
-          <>
-            <div className="form-group">
-              <label>Bank Name</label>
-              <input
-                type="text"
-                name="bankName"
-                value={formData.bankName}
-                onChange={handleChange}
-                placeholder="Enter bank name"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>IFSC Code</label>
-              <input
-                type="text"
-                name="ifscCode"
-                value={formData.ifscCode}
-                onChange={handleChange}
-                placeholder="Enter IFSC code"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Account Number</label>
-              <input
-                type="text"
-                name="accountNumber"
-                value={formData.accountNumber}
-                onChange={handleChange}
-                placeholder="Enter account number"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Account Holder Name</label>
-              <input
-                type="text"
-                name="accountHolderName"
-                value={formData.accountHolderName}
-                onChange={handleChange}
-                placeholder="Enter account holder name"
-                required
-              />
-            </div>
-          </>
-        ) : (
-          <div className="form-group">
-            <label>UPI ID</label>
-            <input
-              type="text"
-              name="upiId"
-              value={formData.upiId}
-              onChange={handleChange}
-              placeholder="Enter UPI ID"
-              required
-            />
-          </div>
-        )}
-        
-        <button type="submit" className="withdraw-button" disabled={loading}>
-          {loading ? 'Processing...' : 'Withdraw Now'}
+      <div className="withdrawal-header">
+        <button 
+          onClick={onBack}
+          className="secondary-button"
+          style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '50%',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px'
+          }}
+        >
+          ←
         </button>
-      </form>
-      
-      <div className="recharge-info">
-        <p><strong>Note:</strong> Only one withdrawal allowed every 24 hours. 18% GST will be deducted.</p>
-        <p><strong>Minimum withdrawal amount:</strong> ₹100</p>
+        <h1>Withdraw Funds</h1>
+        <div style={{ width: '40px' }}></div> {/* Spacer for alignment */}
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="bottom-nav">
-        <button className="nav-item" onClick={onBack}>
-          <i>🏠</i>
-          <span>Home</span>
-        </button>
-        <button className="nav-item" onClick={() => alert('Products clicked')}>
-          <i>📋</i>
-          <span>Products</span>
-        </button>
-        <button className="nav-item active">
-          <i>💰</i>
-          <span>Wallet</span>
-        </button>
-        <button className="nav-item" onClick={() => alert('Profile clicked')}>
-          <i>👤</i>
-          <span>Profile</span>
-        </button>
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
+
+      <div className="withdrawal-card">
+        <h2>Withdrawal Request</h2>
+        
+        <form onSubmit={handleRequestWithdrawal}>
+          {/* Amount Input */}
+          <div className="form-group">
+            <label className="form-label">Amount to Withdraw:</label>
+            <input
+              type="text"
+              value={amount}
+              onChange={handleAmountChange}
+              placeholder="Enter amount"
+              className="form-input"
+            />
+          </div>
+
+          {/* Method Selection */}
+          <div className="form-group">
+            <label className="form-label">Withdrawal Method:</label>
+            <div className="method-selection">
+              <button
+                type="button"
+                className={`method-button ${method === 'bank' ? 'selected' : ''}`}
+                onClick={() => setMethod('bank')}
+              >
+                <div className="method-icon">🏦</div>
+                <div className="method-name">Bank Transfer</div>
+              </button>
+              <button
+                type="button"
+                className={`method-button ${method === 'upi' ? 'selected' : ''}`}
+                onClick={() => setMethod('upi')}
+              >
+                <div className="method-icon">💳</div>
+                <div className="method-name">UPI</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Method Specific Fields */}
+          {method === 'bank' ? (
+            <div className="bank-details">
+              <div className="form-group">
+                <label className="form-label">Account Holder Name:</label>
+                <input
+                  type="text"
+                  value={bankDetails.accountHolderName}
+                  onChange={(e) => handleBankDetailsChange('accountHolderName', e.target.value)}
+                  placeholder="Enter account holder name"
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Account Number:</label>
+                <input
+                  type="text"
+                  value={bankDetails.accountNumber}
+                  onChange={(e) => handleBankDetailsChange('accountNumber', e.target.value)}
+                  placeholder="Enter account number"
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">IFSC Code:</label>
+                <input
+                  type="text"
+                  value={bankDetails.ifscCode}
+                  onChange={(e) => handleBankDetailsChange('ifscCode', e.target.value)}
+                  placeholder="Enter IFSC code"
+                  className="form-input"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="upi-details">
+              <div className="form-group">
+                <label className="form-label">UPI ID:</label>
+                <input
+                  type="text"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  placeholder="Enter UPI ID (e.g., mobile@upi)"
+                  className="form-input"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Amount Breakdown */}
+          {amount && parseFloat(amount) > 0 && (
+            <div className="amount-section">
+              <div className="amount-row">
+                <span className="amount-label">Amount:</span>
+                <span className="amount-value">{formatCurrency(parseFloat(amount))}</span>
+              </div>
+              <div className="amount-row">
+                <span className="amount-label">GST (18%):</span>
+                <span className="amount-value">-{formatCurrency(calculateGST(parseFloat(amount)))}</span>
+              </div>
+              <div className="amount-row amount-total">
+                <span className="amount-label">Net Amount:</span>
+                <span className="amount-value">{formatCurrency(calculateNetAmount(parseFloat(amount)))}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="form-buttons">
+            <button 
+              type="submit" 
+              className="gradient-button"
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Request Withdrawal'}
+            </button>
+          </div>
+        </form>
       </div>
+
+      {/* Withdrawal History */}
+      <div className="history-section">
+        <h2>Withdrawal History</h2>
+        
+        {withdrawals.length > 0 ? (
+          <div>
+            {withdrawals.slice(0, 5).map(withdrawal => (
+              <div key={withdrawal.id} className="history-item">
+                <div className="history-item-header">
+                  <div className="history-item-amount">
+                    {formatCurrency(withdrawal.amount)}
+                  </div>
+                  <span className={`history-item-status ${withdrawal.status}`}>
+                    {withdrawal.status}
+                  </span>
+                </div>
+                <div className="history-item-details">
+                  <span>{withdrawal.method.toUpperCase()}</span>
+                  <span>{formatDate(withdrawal.request_date)}</span>
+                </div>
+                {withdrawal.status === 'rejected' && withdrawal.remarks && (
+                  <div style={{ 
+                    color: 'var(--error)', 
+                    fontSize: '14px',
+                    marginTop: '8px'
+                  }}>
+                    Reason: {withdrawal.remarks}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="premium-card" style={{ textAlign: 'center', padding: '24px' }}>
+            <p style={{ margin: '0', color: 'var(--text-secondary)' }}>
+              No withdrawal history
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+      <button className="fab" onClick={onBack}>
+        +
+      </button>
     </div>
   );
 }

@@ -82,103 +82,208 @@ function Referral({ token, userData, onBack }) {
   };
 
   return (
-    <div className="recharge-form">
+    <div style={{ padding: '16px' }}>
       {/* Header */}
-      <div className="header">
-        <h2>Share Referral</h2>
-        <button onClick={onBack}>✕</button>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '24px'
+      }}>
+        <button 
+          onClick={onBack}
+          className="secondary-button"
+          style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '50%',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px'
+          }}
+        >
+          ←
+        </button>
+        <h1 style={{ 
+          margin: '0', 
+          fontSize: '24px', 
+          background: 'linear-gradient(to right, var(--gold-primary), var(--royal-blue-light))',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          fontWeight: '700'
+        }}>
+          Refer & Earn
+        </h1>
+        <div style={{ width: '40px' }}></div> {/* Spacer for alignment */}
       </div>
 
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
-      <div style={{ textAlign: 'center', padding: '20px' }}>
-        <h3>Earn by Sharing</h3>
-        <p>Share your referral link with friends and earn rewards when they join!</p>
+      <div className="premium-card">
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h2 style={{ 
+            margin: '0 0 12px 0', 
+            fontSize: '24px', 
+            color: 'var(--text-primary)',
+            fontWeight: '600'
+          }}>
+            Invite Friends, Earn Rewards!
+          </h2>
+          <p style={{ 
+            margin: '0', 
+            color: 'var(--text-secondary)',
+            lineHeight: '1.6'
+          }}>
+            Share your referral link and earn when your friends join and make their first investment.
+          </p>
+        </div>
 
-        <div style={{ background: 'var(--card-bg)', padding: '20px', borderRadius: 'var(--border-radius-xl)', margin: '20px 0' }}>
-          <p><strong>Your Referral Link:</strong></p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '15px 0' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          <div className="premium-card" style={{ 
+            margin: 0, 
+            padding: '20px',
+            textAlign: 'center',
+            background: 'rgba(30, 30, 50, 0.5)',
+            border: '1px solid rgba(255, 215, 0, 0.2)'
+          }}>
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '700', 
+              color: 'var(--gold-primary)',
+              margin: '0 0 8px 0'
+            }}>
+              ₹100
+            </div>
+            <div style={{ 
+              color: 'var(--text-secondary)',
+              fontSize: '14px'
+            }}>
+              Your Reward
+            </div>
+          </div>
+          <div className="premium-card" style={{ 
+            margin: 0, 
+            padding: '20px',
+            textAlign: 'center',
+            background: 'rgba(30, 30, 50, 0.5)',
+            border: '1px solid rgba(65, 105, 225, 0.2)'
+          }}>
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '700', 
+              color: 'var(--royal-blue-light)',
+              margin: '0 0 8px 0'
+            }}>
+              ₹50
+            </div>
+            <div style={{ 
+              color: 'var(--text-secondary)',
+              fontSize: '14px'
+            }}>
+              Friend's Reward
+            </div>
+          </div>
+        </div>
+
+        <div className="premium-card" style={{ 
+          margin: '0 0 24px 0', 
+          padding: '20px',
+          background: 'rgba(30, 30, 50, 0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.05)'
+        }}>
+          <h3 style={{ 
+            margin: '0 0 16px 0', 
+            color: 'var(--text-primary)',
+            fontWeight: '600',
+            textAlign: 'center'
+          }}>
+            Your Referral Link
+          </h3>
+          
+          <div style={{ 
+            position: 'relative',
+            marginBottom: '16px'
+          }}>
             <input
               type="text"
-              value={referralLink}
+              value={referralLink || (loading ? 'Loading...' : '')}
               readOnly
               placeholder="Loading referral link..."
               style={{ 
-                flex: 1, 
-                padding: '12px', 
-                background: 'rgba(30, 30, 50, 0.6)', 
-                border: '1px solid var(--card-border)', 
-                borderRadius: 'var(--border-radius-xl)', 
-                color: 'var(--text-primary)' 
+                width: '100%',
+                padding: '16px',
+                background: 'rgba(30, 30, 50, 0.5)',
+                border: '1px solid rgba(255, 215, 0, 0.2)',
+                borderRadius: '12px',
+                color: 'var(--text-primary)',
+                fontSize: '14px',
+                paddingRight: '100px'
               }}
             />
             <button 
-              onClick={copyReferralLink} 
+              onClick={copyReferralLink}
               disabled={!referralLink || loading}
-              style={{
-                padding: '12px 20px',
-                background: 'linear-gradient(135deg, var(--gold-primary), var(--royal-blue))',
-                color: 'var(--luxury-dark)',
-                border: 'none',
-                borderRadius: 'var(--border-radius-xl)',
-                fontWeight: '600',
-                cursor: 'pointer'
+              className="secondary-button"
+              style={{ 
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                padding: '8px 16px'
               }}
             >
               {loading ? 'Loading...' : 'Copy'}
             </button>
           </div>
+          
+          <button 
+            onClick={shareReferralLink}
+            className="gradient-button"
+            style={{ width: '100%', padding: '16px' }}
+            disabled={!referralLink || loading}
+          >
+            Share Referral Link
+          </button>
         </div>
 
-        <button 
-          onClick={shareReferralLink}
-          style={{
-            width: '100%',
-            padding: '15px',
-            background: 'linear-gradient(135deg, var(--gold-primary), var(--royal-blue))',
-            color: 'var(--luxury-dark)',
-            border: 'none',
-            borderRadius: 'var(--border-radius-xl)',
-            fontSize: '1.1rem',
-            fontWeight: '700',
-            cursor: 'pointer',
-            marginTop: '20px'
-          }}
-        >
-          Share Referral Link
-        </button>
-
-        <div style={{ marginTop: '30px', textAlign: 'left' }}>
-          <h4>How it works:</h4>
-          <ul style={{ paddingLeft: '20px', marginTop: '10px' }}>
-            <li style={{ margin: '10px 0' }}>Share your referral link with friends</li>
-            <li style={{ margin: '10px 0' }}>They register using your link</li>
-            <li style={{ margin: '10px 0' }}>You earn rewards when they make investments</li>
-            <li style={{ margin: '10px 0' }}>There's no limit to how much you can earn!</li>
-          </ul>
+        <div className="premium-card" style={{ 
+          margin: 0, 
+          padding: '20px',
+          background: 'rgba(30, 30, 50, 0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.05)'
+        }}>
+          <h3 style={{ 
+            margin: '0 0 12px 0', 
+            color: 'var(--text-primary)',
+            fontWeight: '600'
+          }}>
+            How it works:
+          </h3>
+          <ol style={{ 
+            margin: '0', 
+            padding: '0 0 0 20px',
+            color: 'var(--text-secondary)'
+          }}>
+            <li style={{ margin: '8px 0' }}>Share your referral link with friends</li>
+            <li style={{ margin: '8px 0' }}>Friend signs up using your link</li>
+            <li style={{ margin: '8px 0' }}>Friend makes their first investment</li>
+            <li style={{ margin: '8px 0' }}>You both receive rewards!</li>
+          </ol>
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="bottom-nav">
-        <button className="nav-item" onClick={onBack}>
-          <i>🏠</i>
-          <span>Home</span>
-        </button>
-        <button className="nav-item" onClick={() => alert('Products clicked')}>
-          <i>📋</i>
-          <span>Products</span>
-        </button>
-        <button className="nav-item" onClick={() => alert('Wallet clicked')}>
-          <i>💰</i>
-          <span>Wallet</span>
-        </button>
-        <button className="nav-item active">
-          <i>👤</i>
-          <span>Profile</span>
-        </button>
-      </div>
+      {/* Floating Action Button */}
+      <button className="fab" onClick={onBack}>
+        +
+      </button>
     </div>
   );
 }

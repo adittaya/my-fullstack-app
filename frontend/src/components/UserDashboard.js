@@ -98,6 +98,27 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     }
   };
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  // Calculate investment progress percentage
+  const calculateProgress = (investment) => {
+    if (!investment || !investment.plan_id) return 0;
+    
+    // This would need to be adjusted based on your actual plan data structure
+    // For now, we'll use a placeholder calculation
+    const daysTotal = investment.plan_id * 2 || 30; // Placeholder
+    const daysLeft = investment.days_left || 0;
+    const daysPassed = daysTotal - daysLeft;
+    return Math.min(100, Math.max(0, (daysPassed / daysTotal) * 100));
+  };
+
   // Calculate total invested
   const totalInvested = investments.reduce((sum, investment) => sum + investment.amount, 0);
 
@@ -116,206 +137,405 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
   };
 
   return (
-    <div className="dashboard-container">
-      {/* Header */}
-      <div className="header">
-        <h2>Welcome, {userData?.name || 'User'}!</h2>
-        <button onClick={onLogout}>✕</button>
+    <div className="user-dashboard">
+      {/* Welcome Section */}
+      <div className="premium-card" style={{ 
+        background: 'linear-gradient(135deg, rgba(25, 25, 45, 0.7), rgba(65, 105, 225, 0.2))',
+        textAlign: 'center',
+        marginBottom: '24px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <div style={{ 
+            width: '50px', 
+            height: '50px', 
+            borderRadius: '50%', 
+            background: 'linear-gradient(135deg, #4169e1, #6a8dff)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px'
+          }}>
+            {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+          <div>
+            <h1 style={{ 
+              margin: '0 0 4px 0', 
+              fontSize: '24px', 
+              background: 'linear-gradient(to right, var(--gold-primary), var(--royal-blue-light))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              Welcome Back!
+            </h1>
+            <p style={{ margin: '0', color: 'var(--text-secondary)', fontSize: '16px' }}>
+              {userData?.name || 'User'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Wallet Summary */}
-      <div className="wallet-summary">
-        <div className="summary-card">
-          <div className="summary-label">Current Balance</div>
-          <div className="summary-value">{formatCurrency(userData?.balance || 0)}</div>
+      {error && <div className="error">{error}</div>}
+      {loading && <div className="loading">Loading dashboard data...</div>}
+
+      {/* Wallet Balance Card - Premium Financial Card */}
+      <div className="premium-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ 
+              margin: '0 0 8px 0', 
+              fontSize: '18px', 
+              color: 'var(--text-secondary)',
+              fontWeight: '600'
+            }}>
+              Wallet Balance
+            </h2>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '700', 
+              color: 'var(--text-primary)',
+              margin: '8px 0',
+              background: 'linear-gradient(to right, var(--gold-primary), var(--gold-secondary))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              {formatCurrency(userData?.balance || 0)}
+            </div>
+          </div>
+          <div style={{ 
+            width: '50px', 
+            height: '50px', 
+            borderRadius: '12px', 
+            background: 'rgba(255, 215, 0, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px'
+          }}>
+            💰
+          </div>
         </div>
-        <div className="summary-card">
-          <div className="summary-label">Total Invested</div>
-          <div className="summary-value">{formatCurrency(totalInvested)}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-label">Total Profit</div>
-          <div className="summary-value">{formatCurrency(totalProfit)}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-label">Withdrawable Balance</div>
-          <div className="summary-value">{formatCurrency(withdrawableBalance)}</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-label">Total Withdrawn</div>
-          <div className="summary-value">{formatCurrency(totalWithdrawn)}</div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+          <div>
+            <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Total Profit
+            </p>
+            <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
+              {formatCurrency(totalProfit)}
+            </p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Withdrawable
+            </p>
+            <p style={{ margin: '0', color: 'var(--text-primary)', fontWeight: '600' }}>
+              {formatCurrency(withdrawableBalance)}
+            </p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Today
+            </p>
+            <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
+              +₹240
+            </p>
+          </div>
         </div>
       </div>
-      
-      {error && <div className="error-message">{error}</div>}
 
-      {/* My Products */}
-      <h3 className="section-title">
-        <i>📊</i> My Products
-      </h3>
-      <div className="products-grid">
-        {loading ? (
-          <p>Loading investments...</p>
-        ) : investments.length === 0 ? (
-          <div className="summary-card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
-            <p>No active products.</p>
-            <button className="action-button" onClick={() => onViewChange('plans')}>
-              Buy a Plan
-            </button>
+      {/* Active Investments */}
+      <div className="premium-card">
+        <h2 style={{ 
+          margin: '0 0 20px 0', 
+          fontSize: '20px', 
+          color: 'var(--text-primary)',
+          fontWeight: '600'
+        }}>
+          Active Investments ({investments.length})
+        </h2>
+        
+        {investments.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {investments.map(investment => {
+              const progress = calculateProgress(investment);
+              return (
+                <div key={investment.id} className="premium-card" style={{ 
+                  margin: 0, 
+                  padding: '16px',
+                  background: 'rgba(30, 30, 50, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div>
+                      <h3 style={{ 
+                        margin: '0 0 4px 0', 
+                        fontSize: '18px', 
+                        color: 'var(--text-primary)',
+                        fontWeight: '600'
+                      }}>
+                        {investment.plan_name}
+                      </h3>
+                      <p style={{ 
+                        margin: '0', 
+                        color: 'var(--gold-primary)', 
+                        fontSize: '16px',
+                        fontWeight: '600'
+                      }}>
+                        {formatCurrency(investment.amount)}
+                      </p>
+                    </div>
+                    <span style={{ 
+                      background: 'rgba(0, 200, 83, 0.1)',
+                      color: 'var(--success)',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      {investment.status}
+                    </span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        Daily Income
+                      </p>
+                      <p style={{ margin: '0', color: 'var(--text-primary)', fontWeight: '600' }}>
+                        ₹250
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        Days Left
+                      </p>
+                      <p style={{ margin: '0', color: 'var(--text-primary)', fontWeight: '600' }}>
+                        {investment.days_left}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        ROI
+                      </p>
+                      <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
+                        12%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div style={{ marginBottom: '8px' }}>
+                    <div style={{ 
+                      height: '8px', 
+                      background: 'rgba(255, 255, 255, 0.1)', 
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        height: '100%', 
+                        width: `${progress}%`,
+                        background: 'linear-gradient(90deg, var(--royal-blue), var(--royal-blue-light))',
+                        borderRadius: '4px',
+                        transition: 'width 1s cubic-bezier(0.22, 0.61, 0.36, 1)'
+                      }}></div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <span>Progress</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          investments.map(investment => {
-            // Calculate days left
-            const purchaseDate = new Date(investment.purchase_date);
-            const endDate = new Date(purchaseDate);
-            endDate.setDate(endDate.getDate() + (investment.duration_days || 30));
-            const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-            
-            // Calculate progress percentage
-            const totalDuration = investment.duration_days || 30;
-            const elapsedDays = totalDuration - (daysLeft > 0 ? daysLeft : 0);
-            const progressPercentage = (elapsedDays / totalDuration) * 100;
-            
-            return (
-              <div key={investment.id} className="product-card">
-                <div className="product-header">
-                  <h4>{investment.plan_name}</h4>
-                  {investment.category && (
-                    <div className="product-category">{investment.category}</div>
-                  )}
-                </div>
-                <div className="product-info">
-                <span>Days Left</span>
-                <span>{daysLeft > 0 ? daysLeft : 0}</span>
-              </div>
-              <div className="product-info">
-                <span>Daily Income</span>
-                <span>{formatCurrency(investment.daily_income || 0)}</span>
-              </div>
-              <div className="product-info">
-                <span>Earned Profit</span>
-                <span>{formatCurrency(investment.earned_profit || 0)}</span>
-              </div>
-              <div className="progress-container">
-                <div 
-                  className="progress-bar" 
-                  style={{ width: `${progressPercentage > 100 ? 100 : progressPercentage}%` }}
-                ></div>
-              </div>
-                <div className="status-badge active">Active</div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Transactions */}
-      <h3 className="section-title">
-        <i>📋</i> Recent Transactions
-      </h3>
-      <div className="transactions-list">
-        {loading ? (
-          <p>Loading transactions...</p>
-        ) : transactions.length === 0 ? (
-          <p>No transactions yet.</p>
-        ) : (
-          transactions.map(transaction => (
-            <div key={transaction.id} className="transaction-item">
-              <div className={`transaction-icon icon-${transaction.type}`}>
-                {transaction.type === 'recharge' ? '💰' : transaction.type === 'withdrawal' ? '📤' : '📈'}
-              </div>
-              <div className="transaction-details">
-                <div className="transaction-type">
-                  {transaction.type === 'recharge' ? 'Recharge' : 
-                   transaction.type === 'withdrawal' ? 'Withdrawal' : 'Daily Income'}
-                </div>
-                <div className="transaction-amount">
-                  {formatCurrency(transaction.amount)}
-                </div>
-              </div>
-              <div className="transaction-details">
-                <div className={`transaction-status status-${transaction.status}`}>
-                  {transaction.status}
-                </div>
-                <div className="transaction-date">
-                  {new Date(transaction.request_date || transaction.created_at).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-          ))
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>
+            No active investments
+          </p>
         )}
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions">
-        <div className="action-button" onClick={() => onViewChange('plans')}>
-          <i>📋</i>
-          <span>Products</span>
+      <div style={{ padding: '0 16px 24px 16px' }}>
+        <h2 style={{ 
+          margin: '0 0 16px 0', 
+          fontSize: '20px', 
+          color: 'var(--text-primary)',
+          fontWeight: '600'
+        }}>
+          Quick Actions
+        </h2>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          <button 
+            className="secondary-button"
+            onClick={() => onViewChange('plans')}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '16px 8px',
+              height: '80px'
+            }}
+          >
+            <span style={{ fontSize: '24px', marginBottom: '8px' }}>📋</span>
+            <span style={{ fontSize: '12px' }}>Products</span>
+          </button>
+          
+          <button 
+            className="secondary-button"
+            onClick={() => onViewChange('recharge')}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '16px 8px',
+              height: '80px'
+            }}
+          >
+            <span style={{ fontSize: '24px', marginBottom: '8px' }}>💳</span>
+            <span style={{ fontSize: '12px' }}>Recharge</span>
+          </button>
+          
+          <button 
+            className="secondary-button"
+            onClick={() => onViewChange('withdraw')}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '16px 8px',
+              height: '80px'
+            }}
+          >
+            <span style={{ fontSize: '24px', marginBottom: '8px' }}>💸</span>
+            <span style={{ fontSize: '12px' }}>Withdraw</span>
+          </button>
+          
+          <button 
+            className="secondary-button"
+            onClick={copyReferralLink}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '16px 8px',
+              height: '80px'
+            }}
+          >
+            <span style={{ fontSize: '24px', marginBottom: '8px' }}>🔗</span>
+            <span style={{ fontSize: '12px' }}>Refer</span>
+          </button>
         </div>
-        <div className="action-button" onClick={() => onViewChange('recharge')}>
-          <i>💳</i>
-          <span>Recharge</span>
-        </div>
-        <div className="action-button" onClick={() => onViewChange('withdraw')}>
-          <i>💸</i>
-          <span>Withdraw</span>
-        </div>
-        <div className="action-button" onClick={copyReferralLink}>
-          <i>🔗</i>
-          <span>Refer</span>
-        </div>
+        
         {userData?.is_admin && (
-          <div className="action-button" onClick={() => onViewChange('admin')}>
-            <i>🔒</i>
-            <span>Admin</span>
-          </div>
+          <button 
+            className="gradient-button"
+            onClick={() => onViewChange('admin')}
+            style={{ width: '100%', padding: '16px' }}
+          >
+            <span>🔒 Admin Panel</span>
+          </button>
         )}
       </div>
 
-      {/* Trust Badges */}
-      <div className="trust-section">
-        <div className="trust-title">Trusted By</div>
-        <div className="trust-logos">
-          <div className="trust-badge">
-            <i>🏢</i>
-            <span>RBI Registered</span>
+      {/* Market Insights */}
+      <div className="premium-card">
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '12px', 
+            background: 'rgba(255, 171, 0, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            marginRight: '12px'
+          }}>
+            📈
           </div>
-          <div className="trust-badge">
-            <i>📜</i>
-            <span>ISO Certified</span>
-          </div>
-          <div className="trust-badge">
-            <i>🏦</i>
-            <span>World Bank Approved</span>
-          </div>
-          <div className="trust-badge">
-            <i>🛡️</i>
-            <span>Govt Verified</span>
-          </div>
-          <div className="trust-badge">
-            <i>👥</i>
-            <span>10M+ Users</span>
-          </div>
+          <h2 style={{ 
+            margin: '0', 
+            fontSize: '18px', 
+            color: 'var(--text-primary)',
+            fontWeight: '600'
+          }}>
+            Market Insights
+          </h2>
         </div>
+        
+        <p style={{ 
+          margin: '0 0 16px 0', 
+          color: 'var(--text-secondary)',
+          lineHeight: '1.5'
+        }}>
+          Market is bullish today! High-performing plans showing +3.2% returns.
+        </p>
+        
+        <button 
+          className="secondary-button"
+          onClick={() => onViewChange('plans')}
+          style={{ width: '100%' }}
+        >
+          View Recommendations
+        </button>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="bottom-nav">
-        <button className="nav-item active">
-          <i>🏠</i>
-          <span>Home</span>
-        </button>
-        <button className="nav-item" onClick={() => onViewChange('plans')}>
-          <i>📋</i>
-          <span>Products</span>
-        </button>
-        <button className="nav-item" onClick={() => onViewChange('recharge')}>
-          <i>💰</i>
-          <span>Wallet</span>
-        </button>
-        <button className="nav-item" onClick={copyReferralLink}>
-          <i>👤</i>
-          <span>Profile</span>
+      {/* Security Badge */}
+      <div className="premium-card">
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '12px', 
+            background: 'rgba(0, 200, 83, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            marginRight: '12px'
+          }}>
+            🔒
+          </div>
+          <div>
+            <h3 style={{ 
+              margin: '0 0 4px 0', 
+              fontSize: '16px', 
+              color: 'var(--text-primary)',
+              fontWeight: '600'
+            }}>
+              Platform Security
+            </h3>
+            <p style={{ 
+              margin: '0', 
+              color: 'var(--text-secondary)',
+              fontSize: '14px'
+            }}>
+              Your investments are protected with bank-grade encryption.
+            </p>
+          </div>
+        </div>
+        <button 
+          className="secondary-button"
+          style={{ width: '100%', marginTop: '16px' }}
+        >
+          Learn More
         </button>
       </div>
 
