@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import './AdminPanelComplete.css';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
