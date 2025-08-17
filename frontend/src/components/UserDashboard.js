@@ -201,7 +201,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
               Today
             </p>
             <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
-              +₹240
+              +{formatCurrency(investments.reduce((sum, investment) => sum + (investment.daily_income || 0), 0))}
             </p>
           </div>
         </div>
