@@ -1471,6 +1471,78 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
   }
 });
 
+// Manual daily plan recycling (admin)
+app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
+  try {
+    // Get all active investments
+    const { data: investments, error: investmentsError } = await supabase
+      .from('investments')
+      .select(`
+        id,
+        user_id,
+        plan_id,
+        amount,
+        status
+      `)
+      .eq('status', 'active');
+
+    if (investmentsError) {
+      console.error('Error fetching investments:', investmentsError);
+      return res.status(500).json({ error: 'Failed to fetch investments' });
+    }
+
+    // Get all product plans to get daily income values
+    const { data: plans, error: plansError } = await supabase
+      .from('product_plans')
+      .select('id, daily_income');
+
+    if (plansError) {
+      console.error('Error fetching product plans:', plansError);
+      return res.status(500).json({ error: 'Failed to fetch product plans' });
+    }
+
+    // Create a map of plan_id to daily_income for quick lookup
+    const planIncomeMap = {};
+    plans.forEach(plan => {
+      planIncomeMap[plan.id] = plan.daily_income;
+    });
+
+    // Process each investment
+    let processedCount = 0;
+    let totalAmountDistributed = 0;
+
+    for (const investment of investments) {
+      const dailyIncome = planIncomeMap[investment.plan_id];
+      
+      if (dailyIncome && dailyIncome > 0) {
+        // Add daily income to user's balance
+        const { error: updateError } = await supabase.rpc('increment_user_balance', {
+          user_id: investment.user_id,
+          amount: dailyIncome
+        });
+
+        if (updateError) {
+          console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
+          // Continue with other investments even if one fails
+          continue;
+        }
+
+        processedCount++;
+        totalAmountDistributed += dailyIncome;
+      }
+    }
+
+    res.json({
+      message: 'Daily plan recycling completed successfully',
+      processedInvestments: processedCount,
+      totalAmountDistributed: totalAmountDistributed
+    });
+  } catch (error) {
+    console.error('Daily plan recycling error:', error);
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
+
 // Get user details (admin)
 app.get('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
   try {

@@ -209,6 +209,27 @@ function AdminPanel({ token, onLogout }) {
     }
   };
 
+  // New function for manual daily plan recycling
+  const handleDailyRecycle = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/daily-recycle`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setSuccess(`Daily recycling completed: ${response.data.processedInvestments} investments processed, ${formatCurrency(response.data.totalAmountDistributed)} distributed`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to perform daily recycling');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -253,6 +274,21 @@ function AdminPanel({ token, onLogout }) {
 
       {view === 'admin' && (
         <div className="admin-requests">
+          {/* Daily Recycling Button */}
+          <div className="daily-recycle-section">
+            <h2>Daily Plan Recycling</h2>
+            <button 
+              className="recycle-btn"
+              onClick={handleDailyRecycle}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Run Daily Plan Recycling'}
+            </button>
+            <p className="recycle-info">
+              This will distribute daily income from all active investment plans to users' wallets.
+            </p>
+          </div>
+
           <div className="requests-grid">
             {/* Pending Recharges */}
             <div className="requests-section">

@@ -122,6 +122,3 @@ BEGIN
   END IF;
 END;
 $ LANGUAGE plpgsql;
-
-END;
-$ LANGUAGE plpgsql;
