@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   mobile VARCHAR(20),
   balance DECIMAL(10, 2) DEFAULT 0.00,
+  recharge_balance DECIMAL(10, 2) DEFAULT 0.00,
   is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()

@@ -232,7 +232,7 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     // Fetch user data from Supabase
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, mobile, balance, is_admin')
+      .select('id, name, email, mobile, balance, recharge_balance, is_admin')
       .eq('id', req.user.id)
       .single();
 
@@ -314,7 +314,7 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     // Fetch user data
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance')
+      .select('balance, recharge_balance')
       .eq('id', userId)
       .single();
 
@@ -323,26 +323,11 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    // Fetch plan details from database
-    const { data: planData, error: planError } = await supabase
-      .from('product_plans')
-      .select('id, name, price')
-      .eq('id', planId)
-      .single();
+    // Use recharge_balance for purchase validation
+    const userRechargeBalance = user.recharge_balance !== undefined ? user.recharge_balance : user.balance;
 
-    if (planError) {
-      console.error('Supabase plan fetch error:', planError);
-      return res.status(400).json({ error: 'Invalid plan selected' });
-    }
-
-    const plan = {
-      id: planData.id,
-      name: planData.name,
-      price: planData.price
-    };
-
-    // Check if user has sufficient balance
-    if (user.balance < plan.price) {
+    // Check if user has sufficient recharge balance
+    if (userRechargeBalance < plan.price) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -407,14 +392,22 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       }
     }
 
-    // Deduct plan price from user balance
+    // Deduct plan price from user recharge balance
     const newBalance = user.balance - plan.price;
+    const newRechargeBalance = (user.recharge_balance !== undefined ? user.recharge_balance : user.balance) - plan.price;
+    
+    const updateData = { 
+      balance: newBalance
+    };
+    
+    // Only update recharge_balance if it exists in the table
+    if (user.recharge_balance !== undefined) {
+      updateData.recharge_balance = newRechargeBalance;
+    }
     
     const { error: updateError } = await supabase
       .from('users')
-      .update({ 
-        balance: newBalance
-      })
+      .update(updateData)
       .eq('id', userId);
 
     if (updateError) {
@@ -432,11 +425,18 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     if (planDetailsError) {
       console.error('Supabase plan details fetch error:', planDetailsError);
       // Rollback balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', userId);
       return res.status(500).json({ error: 'Failed to fetch plan details' });
     }
@@ -445,11 +445,18 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     if (!planDetails || planDetails.duration_days === undefined) {
       console.error('Invalid plan details:', planDetails);
       // Rollback balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', userId);
       return res.status(500).json({ error: 'Invalid plan details' });
     }
@@ -472,11 +479,18 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     if (investmentError) {
       console.error('Supabase investment insert error:', investmentError);
       // Rollback balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', userId);
       return res.status(500).json({ error: 'Failed to record investment' });
     }
@@ -1153,7 +1167,7 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     // Update user balance
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance')
+      .select('balance, recharge_balance')
       .eq('id', recharge.user_id)
       .single();
 
@@ -1162,25 +1176,36 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    const newBalance = parseFloat(user.balance) + parseFloat(recharge.amount);
+    const rechargeAmount = parseFloat(recharge.amount);
+    const newBalance = parseFloat(user.balance) + rechargeAmount;
+    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + rechargeAmount;
     
     // Log values for debugging
     console.log('Updating user balance:', {
       userId: recharge.user_id,
       currentBalance: user.balance,
+      currentRechargeBalance: user.recharge_balance,
       rechargeAmount: recharge.amount,
       calculatedNewBalance: newBalance,
+      calculatedNewRechargeBalance: newRechargeBalance,
       typeofCurrentBalance: typeof user.balance,
       typeofRechargeAmount: typeof recharge.amount,
       typeofNewBalance: typeof newBalance
     });
 
     // Update user balance
-    const { data: updateData, error: updateError } = await supabase
+    const updateData = { 
+      balance: newBalance
+    };
+    
+    // Only update recharge_balance if it exists in the table
+    if (user.recharge_balance !== undefined) {
+      updateData.recharge_balance = newRechargeBalance;
+    }
+    
+    const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
-      .update({ 
-        balance: newBalance
-      })
+      .update(updateData)
       .eq('id', recharge.user_id)
       .select();
 
@@ -1221,11 +1246,18 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     if (rechargeUpdateError) {
       console.error('Supabase recharge update error:', rechargeUpdateError);
       // Rollback user balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', recharge.user_id);
       
       return res.status(500).json({ error: 'Failed to update recharge status: ' + rechargeUpdateError.message });
@@ -1234,11 +1266,18 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     // Check if any rows were updated (recharge was actually pending)
     if (count === 0) {
       // Rollback user balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', recharge.user_id);
       
       return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
@@ -1320,7 +1359,7 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
     // Deduct amount from user's balance
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, name, email, balance')
+      .select('id, name, email, balance, recharge_balance')
       .eq('id', withdrawal.user_id)
       .single();
 
@@ -1328,13 +1367,22 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const newBalance = parseFloat(userData.balance) - parseFloat(withdrawal.amount);
+    const withdrawalAmount = parseFloat(withdrawal.amount);
+    const newBalance = parseFloat(userData.balance) - withdrawalAmount;
+    const newRechargeBalance = (userData.recharge_balance !== undefined ? parseFloat(userData.recharge_balance) : parseFloat(userData.balance)) - withdrawalAmount;
 
-    const { data: updateData, error: updateError } = await supabase
+    const updateData = { 
+      balance: newBalance
+    };
+    
+    // Only update recharge_balance if it exists in the table
+    if (userData.recharge_balance !== undefined) {
+      updateData.recharge_balance = newRechargeBalance;
+    }
+    
+    const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
-      .update({ 
-        balance: newBalance
-      })
+      .update(updateData)
       .eq('id', withdrawal.user_id)
       .select();
 
@@ -1355,11 +1403,18 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
 
     if (withdrawalUpdateError) {
       // Rollback user balance update
+      const rollbackData = { 
+        balance: userData.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (userData.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = userData.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: userData.balance
-        })
+        .update(rollbackData)
         .eq('id', withdrawal.user_id);
         
       console.error('Supabase withdrawal update error:', withdrawalUpdateError);
@@ -1369,11 +1424,18 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
     // Check if any rows were updated (withdrawal was actually pending)
     if (count === 0) {
       // Rollback user balance update
+      const rollbackData = { 
+        balance: userData.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (userData.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = userData.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: userData.balance
-        })
+        .update(rollbackData)
         .eq('id', withdrawal.user_id);
         
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
@@ -1408,7 +1470,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     // Refund the amount to user's balance
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance')
+      .select('balance, recharge_balance')
       .eq('id', withdrawal.user_id)
       .single();
 
@@ -1417,25 +1479,36 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    const newBalance = parseFloat(user.balance) + parseFloat(withdrawal.amount);
+    const withdrawalAmount = parseFloat(withdrawal.amount);
+    const newBalance = parseFloat(user.balance) + withdrawalAmount;
+    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + withdrawalAmount;
     
     // Log values for debugging
     console.log('Refunding withdrawal amount to user balance:', {
       userId: withdrawal.user_id,
       currentBalance: user.balance,
+      currentRechargeBalance: user.recharge_balance,
       withdrawalAmount: withdrawal.amount,
       calculatedNewBalance: newBalance,
+      calculatedNewRechargeBalance: newRechargeBalance,
       typeofCurrentBalance: typeof user.balance,
       typeofWithdrawalAmount: typeof withdrawal.amount,
       typeofNewBalance: typeof newBalance
     });
 
     // Update user balance
-    const { data: updateData, error: updateError } = await supabase
+    const updateData = { 
+      balance: newBalance
+    };
+    
+    // Only update recharge_balance if it exists in the table
+    if (user.recharge_balance !== undefined) {
+      updateData.recharge_balance = newRechargeBalance;
+    }
+    
+    const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
-      .update({ 
-        balance: newBalance
-      })
+      .update(updateData)
       .eq('id', withdrawal.user_id)
       .select();
 
@@ -1476,11 +1549,18 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     if (withdrawalUpdateError) {
       console.error('Supabase withdrawal update error:', withdrawalUpdateError);
       // Rollback user balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', withdrawal.user_id);
       
       return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
@@ -1489,11 +1569,18 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     // Check if any rows were updated (withdrawal was actually pending)
     if (count === 0) {
       // Rollback user balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', withdrawal.user_id);
       
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
@@ -1553,7 +1640,7 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     // Get user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance')
+      .select('balance, recharge_balance')
       .eq('id', userId)
       .single();
 
@@ -1562,14 +1649,18 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     }
 
     // Calculate new balance
-    const newBalance = parseFloat(user.balance) + parseFloat(amount);
+    const adjustmentAmount = parseFloat(amount);
+    const newBalance = parseFloat(user.balance) + adjustmentAmount;
+    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + adjustmentAmount;
     
     // Log values for debugging
     console.log('Adjusting user balance:', {
       userId: userId,
       currentBalance: user.balance,
+      currentRechargeBalance: user.recharge_balance,
       adjustmentAmount: amount,
       calculatedNewBalance: newBalance,
+      calculatedNewRechargeBalance: newRechargeBalance,
       typeofCurrentBalance: typeof user.balance,
       typeofAdjustmentAmount: typeof amount,
       typeofNewBalance: typeof newBalance,
@@ -1577,11 +1668,18 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     });
 
     // Update user balance
-    const { data: updateData, error: updateError } = await supabase
+    const updateData = { 
+      balance: newBalance
+    };
+    
+    // Only update recharge_balance if it exists in the table
+    if (user.recharge_balance !== undefined) {
+      updateData.recharge_balance = newRechargeBalance;
+    }
+    
+    const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
-      .update({ 
-        balance: newBalance
-      })
+      .update(updateData)
       .eq('id', userId)
       .select();
 
@@ -1625,11 +1723,18 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     if (recordError) {
       console.error('Supabase balance adjustment record error:', recordError);
       // Rollback user balance update
+      const rollbackData = { 
+        balance: user.balance
+      };
+      
+      // Only rollback recharge_balance if it exists in the table
+      if (user.recharge_balance !== undefined) {
+        rollbackData.recharge_balance = user.recharge_balance;
+      }
+      
       await supabase
         .from('users')
-        .update({ 
-          balance: user.balance
-        })
+        .update(rollbackData)
         .eq('id', userId);
       
       return res.status(500).json({ error: 'Failed to record balance adjustment: ' + recordError.message });

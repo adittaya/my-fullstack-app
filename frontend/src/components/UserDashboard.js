@@ -184,7 +184,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              {formatCurrency(userData?.balance || 0)}
+              {formatCurrency(userData?.recharge_balance !== undefined ? userData?.recharge_balance : userData?.balance || 0)}
             </div>
           </div>
           <div style={{ 
