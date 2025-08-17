@@ -127,15 +127,6 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     .filter(t => t.type === 'withdrawal' && t.status === 'approved')
     .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
   return (
     <div className="user-dashboard">
       {/* Welcome Section */}
