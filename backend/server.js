@@ -680,21 +680,79 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid withdrawal amount' });
     }
 
-    // Fetch user data
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance')
-      .eq('id', userId)
-      .single();
+    // Fetch user's financial summary to get withdrawable balance
+    // Fetch user investments to calculate total profit
+    const { data: investments, error: investmentsError } = await supabase
+      .from('investments')
+      .select(`
+        id,
+        plan_id,
+        days_left
+      `)
+      .eq('user_id', userId);
 
-    if (userError) {
-      console.error('Supabase user fetch error:', userError);
-      return res.status(500).json({ error: 'Failed to fetch user data' });
+    if (investmentsError) {
+      console.error('Supabase investments fetch error:', investmentsError);
+      return res.status(500).json({ error: 'Failed to fetch investments' });
     }
 
-    // Check if user has sufficient balance
-    if (user.balance < amount) {
-      return res.status(400).json({ error: 'Insufficient balance' });
+    let totalEarnedProfit = 0;
+    
+    // If we have investments, calculate total earned profit
+    if (investments && investments.length > 0) {
+      // Get all unique plan_ids from investments
+      const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
+      
+      if (planIds.length > 0) {
+        // Fetch plan details for all unique plan_ids
+        const { data: plans, error: plansError } = await supabase
+          .from('product_plans')
+          .select('id, daily_income, duration_days')
+          .in('id', planIds);
+        
+        if (!plansError && plans) {
+          // Create a map of plan_id to plan details
+          const planMap = {};
+          plans.forEach(plan => {
+            planMap[plan.id] = plan;
+          });
+          
+          // Calculate total earned profit from all investments
+          totalEarnedProfit = investments.reduce((sum, investment) => {
+            const planDetails = planMap[investment.plan_id] || {};
+            // Calculate earned profit based on days passed
+            // Profit starts after one day, so we calculate based on (duration_days - days_left)
+            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
+              planDetails.duration_days - investment.days_left : 0;
+            const earnedProfit = daysPassed > 0 ? 
+              daysPassed * (planDetails.daily_income || 0) : 0;
+            return sum + earnedProfit;
+          }, 0);
+        }
+      }
+    }
+
+    // Fetch approved withdrawals to calculate withdrawn amount
+    const { data: withdrawals, error: withdrawalsError } = await supabase
+      .from('withdrawals')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('status', 'approved');
+
+    if (withdrawalsError) {
+      console.error('Supabase withdrawals fetch error:', withdrawalsError);
+      return res.status(500).json({ error: 'Failed to fetch withdrawals' });
+    }
+
+    // Calculate total withdrawn amount
+    const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+    
+    // Calculate withdrawable balance (total earned profit - total withdrawn)
+    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
+
+    // Check if user has sufficient withdrawable balance
+    if (withdrawableBalance < amount) {
+      return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
     // Check if user has requested a withdrawal in the last 24 hours
@@ -719,22 +777,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
     const gstAmount = amount * 0.18;
     const netAmount = amount - gstAmount;
 
-    // Deduct amount from user balance
-    const newBalance = user.balance - amount;
-
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ 
-        balance: newBalance
-      })
-      .eq('id', userId);
-
-    if (updateError) {
-      console.error('Supabase balance update error:', updateError);
-      return res.status(500).json({ error: 'Failed to update user balance' });
-    }
-
-    // Record the withdrawal request
+    // Record the withdrawal request (no balance deduction at this point, as it's pending approval)
     const { error: withdrawalInsertError } = await supabase
       .from('withdrawals')
       .insert([
@@ -752,19 +795,11 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
 
     if (withdrawalInsertError) {
       console.error('Supabase withdrawal insert error:', withdrawalInsertError);
-      // Rollback balance update
-      await supabase
-        .from('users')
-        .update({ 
-          balance: user.balance
-        })
-        .eq('id', userId);
       return res.status(500).json({ error: 'Failed to record withdrawal request' });
     }
 
     res.json({
-      message: 'Withdrawal request submitted successfully',
-      newBalance: newBalance
+      message: 'Withdrawal request submitted successfully'
     });
   } catch (error) {
     console.error('Withdrawal request error:', error);
@@ -1232,6 +1267,32 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       return res.status(404).json({ error: 'Pending withdrawal request not found' });
     }
 
+    // Deduct amount from user's balance
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, name, email, balance')
+      .eq('id', withdrawal.user_id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newBalance = parseFloat(userData.balance) - parseFloat(withdrawal.amount);
+
+    const { data: updateData, error: updateError } = await supabase
+      .from('users')
+      .update({ 
+        balance: newBalance
+      })
+      .eq('id', withdrawal.user_id)
+      .select();
+
+    if (updateError) {
+      console.error('Error updating user balance:', updateError);
+      return res.status(500).json({ error: 'Failed to update user balance' });
+    }
+
     // Update withdrawal status
     const { error: withdrawalUpdateError, count } = await supabase
       .from('withdrawals')
@@ -1243,12 +1304,28 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       .eq('status', 'pending'); // Add this condition to ensure we only update pending withdrawals
 
     if (withdrawalUpdateError) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ 
+          balance: userData.balance
+        })
+        .eq('id', withdrawal.user_id);
+        
       console.error('Supabase withdrawal update error:', withdrawalUpdateError);
       return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
     }
 
     // Check if any rows were updated (withdrawal was actually pending)
     if (count === 0) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ 
+          balance: userData.balance
+        })
+        .eq('id', withdrawal.user_id);
+        
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
 

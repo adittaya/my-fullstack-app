@@ -256,6 +256,32 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       return res.status(400).json({ error: 'Withdrawal request is not pending' });
     }
 
+    // Deduct amount from user's balance
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, name, email, balance')
+      .eq('id', withdrawal.user_id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newBalance = parseFloat(userData.balance) - parseFloat(withdrawal.amount);
+
+    const { data: updateData, error: updateError } = await supabase
+      .from('users')
+      .update({ 
+        balance: newBalance
+      })
+      .eq('id', withdrawal.user_id)
+      .select();
+
+    if (updateError) {
+      console.error('Error updating user balance:', updateError);
+      return res.status(500).json({ error: 'Failed to update user balance' });
+    }
+
     // Update withdrawal status
     const { data: updatedWithdrawal, error: withdrawalError } = await supabase
       .from('withdrawals')
@@ -267,6 +293,14 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       .select();
 
     if (withdrawalError) {
+      // Rollback user balance update
+      await supabase
+        .from('users')
+        .update({ 
+          balance: userData.balance
+        })
+        .eq('id', withdrawal.user_id);
+        
       console.error('Error updating withdrawal status:', withdrawalError);
       return res.status(500).json({ error: 'Failed to update withdrawal status' });
     }
@@ -302,7 +336,7 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       return res.status(400).json({ error: 'Withdrawal request is not pending' });
     }
 
-    // Update user balance (refund the amount)
+    // Refund the amount to user's balance
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id, name, email, balance')
