@@ -28,7 +28,7 @@ function WithdrawalForm({ token, userData, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [withdrawableBalance, setWithdrawableBalance] = useState(0);
+  
 
   const fetchWithdrawals = useCallback(async () => {
     try {
@@ -104,7 +104,7 @@ function WithdrawalForm({ token, userData, onBack }) {
     setSuccess('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/withdraw`, 
+      await axios.post(`${API_BASE_URL}/api/withdraw`, 
         {
           amount: amountFloat,
           method,

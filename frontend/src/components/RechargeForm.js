@@ -42,12 +42,7 @@ function RechargeForm({ token, userData, onBack, onViewChange }) {
     fetchRecharges();
   }, [fetchRecharges]);
 
-  const handleAmountChange = (value) => {
-    // Only allow numeric input
-    if (value === '' || /^\d+$/.test(value)) {
-      setAmount(value);
-    }
-  };
+  
 
   const handleKeyPress = (key) => {
     if (key === 'backspace') {
@@ -80,7 +75,7 @@ function RechargeForm({ token, userData, onBack, onViewChange }) {
       setUpiId(upiResponse.data.upiId);
       
       // Then request the recharge
-      const response = await axios.post(`${API_BASE_URL}/api/recharge`, 
+      await axios.post(`${API_BASE_URL}/api/recharge`, 
         { amount: parseInt(amount) }, 
         {
           headers: {

@@ -19,9 +19,6 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [expandedPlan, setExpandedPlan] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
 
   const fetchProductPlans = useCallback(async () => {
     setLoading(true);
@@ -76,10 +73,6 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
     }
   };
 
-  const togglePlanDetails = (planId) => {
-    setExpandedPlan(expandedPlan === planId ? null : planId);
-  };
-
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -88,34 +81,6 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
       maximumFractionDigits: 2
     }).format(amount);
   };
-
-  // Get category color
-  const getCategoryColor = (category) => {
-    const colors = {
-      beginner: { bg: 'rgba(0, 200, 83, 0.1)', text: 'var(--success)', border: 'rgba(0, 200, 83, 0.3)' },
-      intermediate: { bg: 'rgba(65, 105, 225, 0.1)', text: 'var(--royal-blue)', border: 'rgba(65, 105, 225, 0.3)' },
-      advanced: { bg: 'rgba(123, 31, 162, 0.1)', text: '#7b1fa2', border: 'rgba(123, 31, 162, 0.3)' },
-      premium: { bg: 'rgba(255, 215, 0, 0.1)', text: 'var(--gold-primary)', border: 'rgba(255, 215, 0, 0.3)' }
-    };
-    return colors[category] || colors.premium;
-  };
-
-  // Filter plans based on search and category
-  const filteredPlans = plans.filter(plan => {
-    const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          plan.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || plan.category === filterCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  // Group plans by category
-  const plansByCategory = filteredPlans.reduce((acc, plan) => {
-    if (!acc[plan.category]) {
-      acc[plan.category] = [];
-    }
-    acc[plan.category].push(plan);
-    return acc;
-  }, {});
 
   return (
     <div className="investment-plans" style={{ padding: '16px' }}>

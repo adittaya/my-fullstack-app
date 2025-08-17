@@ -16,7 +16,6 @@ const API_BASE_URL = getApiBaseUrl();
 
 function UserDashboard({ token, userData, onLogout, onViewChange }) {
   const [investments, setInvestments] = useState([]);
-  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [totalProfit, setTotalProfit] = useState(0);
@@ -40,19 +39,6 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
         })
       ]);
 
-      // Fetch transactions (recharges and withdrawals)
-      const rechargesRes = await axios.get(`${API_BASE_URL}/api/recharges`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      const withdrawalsRes = await axios.get(`${API_BASE_URL}/api/withdrawals`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
       setInvestments(investmentsRes.data.investments || []);
       
       // Set financial data
@@ -60,14 +46,6 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
         setTotalProfit(financialSummaryRes.data.totalProfit || 0);
         setWithdrawableBalance(financialSummaryRes.data.withdrawableBalance || 0);
       }
-
-      // Combine transactions and sort by date
-      const allTransactions = [
-        ...(rechargesRes.data.recharges || []).map(t => ({ ...t, type: 'recharge' })),
-        ...(withdrawalsRes.data.withdrawals || []).map(t => ({ ...t, type: 'withdrawal' }))
-      ].sort((a, b) => new Date(b.request_date || b.created_at) - new Date(a.request_date || a.created_at));
-
-      setTransactions(allTransactions.slice(0, 10)); // Show only last 10 transactions
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
       // Set error message to display to user
@@ -119,13 +97,7 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
     return Math.min(100, Math.max(0, (daysPassed / daysTotal) * 100));
   };
 
-  // Calculate total invested
-  const totalInvested = investments.reduce((sum, investment) => sum + investment.amount, 0);
-
-  // Calculate total withdrawn
-  const totalWithdrawn = transactions
-    .filter(t => t.type === 'withdrawal' && t.status === 'approved')
-    .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+  
 
   return (
     <div className="user-dashboard">
