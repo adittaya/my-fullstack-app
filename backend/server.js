@@ -441,6 +441,19 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch plan details' });
     }
 
+    // Validate that we have plan details
+    if (!planDetails || planDetails.duration_days === undefined) {
+      console.error('Invalid plan details:', planDetails);
+      // Rollback balance update
+      await supabase
+        .from('users')
+        .update({ 
+          balance: user.balance
+        })
+        .eq('id', userId);
+      return res.status(500).json({ error: 'Invalid plan details' });
+    }
+
     // Record the investment
     const { error: investmentError } = await supabase
       .from('investments')
