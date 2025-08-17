@@ -72,6 +72,16 @@ CREATE TABLE IF NOT EXISTS balance_adjustments (
   adjustment_date TIMESTAMP DEFAULT NOW()
 );
 
+-- Create daily_profits table to track processed daily profits
+CREATE TABLE IF NOT EXISTS daily_profits (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  investment_id INTEGER REFERENCES investments(id),
+  amount DECIMAL(10, 2) NOT NULL,
+  processed_date TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Insert sample product plans
 INSERT INTO product_plans (name, category, price, daily_income, total_return, duration_days) VALUES
 ('Starter Plan', 'beginner', 490.00, 80.00, 720.00, 9),
@@ -93,6 +103,9 @@ CREATE INDEX IF NOT EXISTS idx_recharges_user_id ON recharges(user_id);
 CREATE INDEX IF NOT EXISTS idx_investments_purchase_date ON investments(purchase_date);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_request_date ON withdrawals(request_date);
 CREATE INDEX IF NOT EXISTS idx_recharges_request_date ON recharges(request_date);
+CREATE INDEX IF NOT EXISTS idx_daily_profits_user_id ON daily_profits(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_profits_investment_id ON daily_profits(investment_id);
+CREATE INDEX IF NOT EXISTS idx_daily_profits_processed_date ON daily_profits(processed_date);
 
 -- Create function to increment user balance
 CREATE OR REPLACE FUNCTION increment_user_balance(user_id INTEGER, amount DECIMAL)

@@ -602,7 +602,7 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
 
     const currentBalance = parseFloat(user.balance) || 0;
 
-    // Fetch user investments to calculate total profit
+    // Fetch user investments to calculate total theoretical profit
     const { data: investments, error: investmentsError } = await supabase
       .from('investments')
       .select(`
@@ -619,7 +619,7 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
 
     let totalEarnedProfit = 0;
     
-    // If we have investments, calculate total earned profit
+    // If we have investments, calculate total theoretical earned profit
     if (investments && investments.length > 0) {
       // Get all unique plan_ids from investments
       const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
@@ -638,7 +638,7 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
             planMap[plan.id] = plan;
           });
           
-          // Calculate total earned profit from all investments
+          // Calculate total theoretical earned profit from all investments
           totalEarnedProfit = investments.reduce((sum, investment) => {
             const planDetails = planMap[investment.plan_id] || {};
             // Calculate earned profit based on days passed
@@ -652,6 +652,21 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
         }
       }
     }
+
+    // Fetch processed daily profits to calculate actual withdrawable balance
+    // This represents profits that have actually been added to the user's balance through daily recycling
+    const { data: dailyProfits, error: dailyProfitsError } = await supabase
+      .from('daily_profits')
+      .select('amount')
+      .eq('user_id', userId);
+
+    if (dailyProfitsError) {
+      console.error('Supabase daily profits fetch error:', dailyProfitsError);
+      return res.status(500).json({ error: 'Failed to fetch daily profits' });
+    }
+
+    // Calculate total processed daily profits (actual withdrawable amount)
+    const totalProcessedProfits = dailyProfits.reduce((sum, profit) => sum + profit.amount, 0);
 
     // Fetch approved withdrawals to calculate withdrawn amount
     const { data: withdrawals, error: withdrawalsError } = await supabase
@@ -668,13 +683,14 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total earned profit - total withdrawn)
-    // Only earned profit can be withdrawn, not the principal investment
-    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
+    // Calculate withdrawable balance (total processed daily profits - total withdrawn)
+    // Only profits that have been processed through daily recycling can be withdrawn
+    const withdrawableBalance = Math.max(0, totalProcessedProfits - totalWithdrawn);
 
     res.json({
       message: 'Financial summary fetched successfully',
       totalProfit: totalEarnedProfit,
+      totalProcessedProfits: totalProcessedProfits,
       totalWithdrawn: totalWithdrawn,
       withdrawableBalance: withdrawableBalance
     });
@@ -695,57 +711,20 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid withdrawal amount' });
     }
 
-    // Fetch user's financial summary to get withdrawable balance
-    // Fetch user investments to calculate total profit
-    const { data: investments, error: investmentsError } = await supabase
-      .from('investments')
-      .select(`
-        id,
-        plan_id,
-        days_left
-      `)
+    // Fetch processed daily profits to calculate actual withdrawable balance
+    // This represents profits that have actually been added to the user's balance through daily recycling
+    const { data: dailyProfits, error: dailyProfitsError } = await supabase
+      .from('daily_profits')
+      .select('amount')
       .eq('user_id', userId);
 
-    if (investmentsError) {
-      console.error('Supabase investments fetch error:', investmentsError);
-      return res.status(500).json({ error: 'Failed to fetch investments' });
+    if (dailyProfitsError) {
+      console.error('Supabase daily profits fetch error:', dailyProfitsError);
+      return res.status(500).json({ error: 'Failed to fetch daily profits' });
     }
 
-    let totalEarnedProfit = 0;
-    
-    // If we have investments, calculate total earned profit
-    if (investments && investments.length > 0) {
-      // Get all unique plan_ids from investments
-      const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
-      
-      if (planIds.length > 0) {
-        // Fetch plan details for all unique plan_ids
-        const { data: plans, error: plansError } = await supabase
-          .from('product_plans')
-          .select('id, daily_income, duration_days')
-          .in('id', planIds);
-        
-        if (!plansError && plans) {
-          // Create a map of plan_id to plan details
-          const planMap = {};
-          plans.forEach(plan => {
-            planMap[plan.id] = plan;
-          });
-          
-          // Calculate total earned profit from all investments
-          totalEarnedProfit = investments.reduce((sum, investment) => {
-            const planDetails = planMap[investment.plan_id] || {};
-            // Calculate earned profit based on days passed
-            // Profit starts after one day, so we calculate based on (duration_days - days_left)
-            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
-              planDetails.duration_days - investment.days_left : 0;
-            const earnedProfit = daysPassed > 0 ? 
-              daysPassed * (planDetails.daily_income || 0) : 0;
-            return sum + earnedProfit;
-          }, 0);
-        }
-      }
-    }
+    // Calculate total processed daily profits (actual withdrawable amount)
+    const totalProcessedProfits = dailyProfits.reduce((sum, profit) => sum + profit.amount, 0);
 
     // Fetch approved withdrawals to calculate withdrawn amount
     const { data: withdrawals, error: withdrawalsError } = await supabase
@@ -762,9 +741,9 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total earned profit - total withdrawn)
-    // Only earned profit can be withdrawn, not the principal investment
-    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
+    // Calculate withdrawable balance (total processed daily profits - total withdrawn)
+    // Only profits that have been processed through daily recycling can be withdrawn
+    const withdrawableBalance = Math.max(0, totalProcessedProfits - totalWithdrawn);
 
     // Check if user has sufficient withdrawable balance
     if (withdrawableBalance < amount) {
@@ -1722,6 +1701,24 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
 
           if (updateError) {
             console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
+            // Continue with other investments even if one fails
+            continue;
+          }
+
+          // Record the daily profit in the daily_profits table
+          const { error: insertProfitError } = await supabase
+            .from('daily_profits')
+            .insert([
+              {
+                user_id: investment.user_id,
+                investment_id: investment.id,
+                amount: dailyIncome,
+                processed_date: new Date().toISOString()
+              }
+            ]);
+
+          if (insertProfitError) {
+            console.error(`Error recording daily profit for user ${investment.user_id}:`, insertProfitError);
             // Continue with other investments even if one fails
             continue;
           }

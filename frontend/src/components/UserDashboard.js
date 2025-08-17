@@ -223,7 +223,13 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
               Today
             </p>
             <p style={{ margin: '0', color: 'var(--success)', fontWeight: '600' }}>
-              +{formatCurrency(investments.reduce((sum, investment) => sum + (investment.daily_income || 0), 0))}
+              +{formatCurrency(investments.reduce((sum, investment) => {
+                // Only include investments that are still active (days_left > 0)
+                if (investment.days_left > 0) {
+                  return sum + (investment.daily_income || 0);
+                }
+                return sum;
+              }, 0))}
             </p>
           </div>
         </div>
