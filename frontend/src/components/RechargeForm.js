@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './RechargeForm.css';
+import qrCodeImage from '../assets/qr-code.png';
 
 // Determine the API base URL based on environment
 const getApiBaseUrl = () => {
@@ -179,7 +180,22 @@ function RechargeForm({ token, userData, onBack, onViewChange }) {
           ←
         </button>
         <h1>Wallet Recharge</h1>
-        <div style={{ width: '40px' }}></div> {/* Spacer for alignment */}
+        <button 
+          onClick={() => window.location.reload()} // This will trigger logout in the App component
+          className="secondary-button"
+          style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '50%',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px'
+          }}
+        >
+          ↪
+        </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -252,7 +268,7 @@ function RechargeForm({ token, userData, onBack, onViewChange }) {
               </p>
               
               <div className="qr-code-container">
-                <img src="/qr-code.png" alt="UPI QR Code" style={{ width: '200px', height: '200px' }} />
+                <img src={qrCodeImage} alt="UPI QR Code" style={{ width: '200px', height: '200px', maxWidth: '100%' }} />
               </div>
               
               <p className="qr-instructions">

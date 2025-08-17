@@ -106,8 +106,28 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
       <div className="premium-card" style={{ 
         background: 'linear-gradient(135deg, rgba(25, 25, 45, 0.7), rgba(65, 105, 225, 0.2))',
         textAlign: 'center',
-        marginBottom: '24px'
+        marginBottom: '24px',
+        position: 'relative'
       }}>
+        <button 
+          onClick={onLogout}
+          className="secondary-button"
+          style={{ 
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            width: '36px', 
+            height: '36px', 
+            borderRadius: '50%',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px'
+          }}
+        >
+          ↪
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
           <div style={{ 
             width: '50px', 
