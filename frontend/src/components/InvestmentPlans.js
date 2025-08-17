@@ -223,7 +223,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {formatCurrency(plan.daily_income)}
+                      {formatCurrency(plan.dailyIncome)}
                     </p>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -240,7 +240,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {plan.duration_days} Days
+                      {plan.durationDays} Days
                     </p>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -257,7 +257,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {formatCurrency(plan.total_return - plan.price)}
+                      {formatCurrency(plan.totalReturn - plan.price)}
                     </p>
                   </div>
                 </div>
@@ -272,7 +272,7 @@ function InvestmentPlans({ token, onPlanPurchase, userData, onBack }) {
                     marginBottom: '8px'
                   }}>
                     <span>Progress</span>
-                    <span>0/{formatCurrency(plan.total_return)}</span>
+                    <span>0/{formatCurrency(plan.totalReturn)}</span>
                   </div>
                   <div style={{ 
                     height: '10px', 
