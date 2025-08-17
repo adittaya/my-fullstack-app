@@ -654,9 +654,8 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total earned profit)
-    // Note: We're not reducing by totalWithdrawn as per the requirement
-    const withdrawableBalance = totalEarnedProfit;
+    // Calculate withdrawable balance (total earned profit - total withdrawn)
+    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
 
     res.json({
       message: 'Financial summary fetched successfully',
@@ -748,12 +747,11 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total earned profit)
-    const withdrawableBalance = totalEarnedProfit;
+    // Calculate withdrawable balance (total earned profit - total withdrawn)
+    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
 
     // Check if user has sufficient withdrawable balance
-    // Based on the requirement, users can withdraw up to their total earned profit
-    if (totalEarnedProfit < amount) {
+    if (withdrawableBalance < amount) {
       return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
