@@ -837,17 +837,12 @@ app.get('/api/withdrawals', authenticateToken, async (req, res) => {
 // Request recharge
 app.post('/api/recharge', authenticateToken, async (req, res) => {
   try {
-    const { amount, utr } = req.body; // UPI Transaction Reference
+    const { amount } = req.body; // UPI Transaction Reference is not required for initial request
     const userId = req.user.id;
 
     // Validate amount
-    if (amount <= 0) {
+    if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid recharge amount' });
-    }
-
-    // Validate UTR
-    if (!utr || utr.length < 5) {
-      return res.status(400).json({ error: 'Valid UTR is required' });
     }
 
     // Record the recharge request
@@ -857,7 +852,7 @@ app.post('/api/recharge', authenticateToken, async (req, res) => {
         {
           user_id: userId,
           amount: amount,
-          utr: utr,
+          utr: '', // UTR will be provided later
           request_date: new Date().toISOString(),
           status: 'pending' // pending, approved, rejected
         }
@@ -885,7 +880,16 @@ app.get('/api/recharges', authenticateToken, async (req, res) => {
     // Fetch user recharges
     const { data: recharges, error } = await supabase
       .from('recharges')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        amount,
+        utr,
+        request_date,
+        status,
+        processed_date,
+        created_at
+      `)
       .eq('user_id', userId)
       .order('request_date', { ascending: false });
 
@@ -900,6 +904,57 @@ app.get('/api/recharges', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Recharges fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update UTR for a pending recharge
+app.put('/api/recharge/:id/utr', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { utr } = req.body;
+    const userId = req.user.id;
+
+    // Validate UTR
+    if (!utr || utr.length < 5) {
+      return res.status(400).json({ error: 'Valid UTR is required' });
+    }
+
+    // Check if the recharge exists and belongs to the user
+    const { data: recharge, error: fetchError } = await supabase
+      .from('recharges')
+      .select('id, user_id, status')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !recharge) {
+      return res.status(404).json({ error: 'Recharge not found' });
+    }
+
+    // Check if recharge is still pending
+    if (recharge.status !== 'pending') {
+      return res.status(400).json({ error: 'Recharge is no longer pending' });
+    }
+
+    // Update the UTR
+    const { error: updateError } = await supabase
+      .from('recharges')
+      .update({ utr: utr })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+
+    if (updateError) {
+      console.error('Supabase recharge UTR update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update UTR' });
+    }
+
+    res.json({
+      message: 'UTR updated successfully'
+    });
+  } catch (error) {
+    console.error('Recharge UTR update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
