@@ -11,7 +11,7 @@ echo "Initializing database schema..."
 echo "Please run the following SQL commands in your Supabase SQL editor:"
 echo ""
 echo "------------------------------------------------------------------------"
-cat /root/my-fullstack-app/database/schema.sql
+cat /root/my-fullstack-app/database/investment-platform-schema.sql
 echo "------------------------------------------------------------------------"
 echo ""
 echo "After running the SQL commands, your database will be initialized with all required tables."
