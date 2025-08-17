@@ -422,6 +422,25 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to update user balance' });
     }
 
+    // Record the investment with initial days_left as duration_days (profit starts after one day)
+    const { data: planDetails, error: planDetailsError } = await supabase
+      .from('product_plans')
+      .select('duration_days')
+      .eq('id', planId)
+      .single();
+
+    if (planDetailsError) {
+      console.error('Supabase plan details fetch error:', planDetailsError);
+      // Rollback balance update
+      await supabase
+        .from('users')
+        .update({ 
+          balance: user.balance
+        })
+        .eq('id', userId);
+      return res.status(500).json({ error: 'Failed to fetch plan details' });
+    }
+
     // Record the investment
     const { error: investmentError } = await supabase
       .from('investments')
@@ -432,7 +451,8 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
           plan_name: plan.name,
           amount: plan.price,
           purchase_date: new Date().toISOString(),
-          status: 'active'
+          status: 'active',
+          days_left: planDetails.duration_days // Track days left for profit calculation
         }
       ]);
 
@@ -472,7 +492,8 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
         plan_name,
         amount,
         purchase_date,
-        status
+        status,
+        days_left
       `)
       .eq('user_id', userId)
       .order('purchase_date', { ascending: false });
@@ -507,23 +528,31 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
             const profit = planDetails.total_return && planDetails.price ? 
               planDetails.total_return - planDetails.price : 0;
             
+            // Calculate earned profit based on days passed
+            // Profit starts after one day, so we calculate based on (duration_days - days_left)
+            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
+              planDetails.duration_days - investment.days_left : 0;
+            const earnedProfit = daysPassed > 0 ? 
+              daysPassed * (planDetails.daily_income || 0) : 0;
+            
             return {
               ...investment,
               daily_income: planDetails.daily_income || 0,
               duration_days: planDetails.duration_days || 0,
               total_return: planDetails.total_return || 0,
               price: planDetails.price || 0,
-              profit: profit
+              profit: profit,
+              earned_profit: earnedProfit
             };
           });
           
-          // Calculate total profit from all investments
-          const totalProfit = enhancedInvestments.reduce((sum, investment) => sum + investment.profit, 0);
+          // Calculate total earned profit from all investments
+          const totalEarnedProfit = enhancedInvestments.reduce((sum, investment) => sum + investment.earned_profit, 0);
           
           return res.json({
             message: 'Investments fetched successfully',
             investments: enhancedInvestments,
-            totalProfit: totalProfit
+            totalProfit: totalEarnedProfit
           });
         }
       }
@@ -551,7 +580,8 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
       .from('investments')
       .select(`
         id,
-        plan_id
+        plan_id,
+        days_left
       `)
       .eq('user_id', userId);
 
@@ -560,9 +590,9 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch investments' });
     }
 
-    let totalProfit = 0;
+    let totalEarnedProfit = 0;
     
-    // If we have investments, calculate total profit
+    // If we have investments, calculate total earned profit
     if (investments && investments.length > 0) {
       // Get all unique plan_ids from investments
       const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
@@ -571,7 +601,7 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
         // Fetch plan details for all unique plan_ids
         const { data: plans, error: plansError } = await supabase
           .from('product_plans')
-          .select('id, total_return, price')
+          .select('id, daily_income, duration_days')
           .in('id', planIds);
         
         if (!plansError && plans) {
@@ -581,12 +611,16 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
             planMap[plan.id] = plan;
           });
           
-          // Calculate total profit from all investments
-          totalProfit = investments.reduce((sum, investment) => {
+          // Calculate total earned profit from all investments
+          totalEarnedProfit = investments.reduce((sum, investment) => {
             const planDetails = planMap[investment.plan_id] || {};
-            const profit = planDetails.total_return && planDetails.price ? 
-              planDetails.total_return - planDetails.price : 0;
-            return sum + profit;
+            // Calculate earned profit based on days passed
+            // Profit starts after one day, so we calculate based on (duration_days - days_left)
+            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
+              planDetails.duration_days - investment.days_left : 0;
+            const earnedProfit = daysPassed > 0 ? 
+              daysPassed * (planDetails.daily_income || 0) : 0;
+            return sum + earnedProfit;
           }, 0);
         }
       }
@@ -607,12 +641,12 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total profit - total withdrawn)
-    const withdrawableBalance = Math.max(0, totalProfit - totalWithdrawn);
+    // Calculate withdrawable balance (total earned profit - total withdrawn)
+    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
 
     res.json({
       message: 'Financial summary fetched successfully',
-      totalProfit: totalProfit,
+      totalProfit: totalEarnedProfit,
       totalWithdrawn: totalWithdrawn,
       withdrawableBalance: withdrawableBalance
     });
@@ -1482,7 +1516,8 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
         user_id,
         plan_id,
         amount,
-        status
+        status,
+        days_left
       `)
       .eq('status', 'active');
 
@@ -1512,23 +1547,41 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
     let totalAmountDistributed = 0;
 
     for (const investment of investments) {
-      const dailyIncome = planIncomeMap[investment.plan_id];
-      
-      if (dailyIncome && dailyIncome > 0) {
-        // Add daily income to user's balance
-        const { error: updateError } = await supabase.rpc('increment_user_balance', {
-          user_id: investment.user_id,
-          amount: dailyIncome
-        });
+      // Only distribute profit if days_left is greater than 0
+      // and days_left is less than or equal to duration_days (to prevent overpayment)
+      if (investment.days_left > 0) {
+        const dailyIncome = planIncomeMap[investment.plan_id];
+        
+        if (dailyIncome && dailyIncome > 0) {
+          // Add daily income to user's balance
+          const { error: updateError } = await supabase.rpc('increment_user_balance', {
+            user_id: investment.user_id,
+            amount: dailyIncome
+          });
 
-        if (updateError) {
-          console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
-          // Continue with other investments even if one fails
-          continue;
+          if (updateError) {
+            console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
+            // Continue with other investments even if one fails
+            continue;
+          }
+
+          // Decrease days_left by 1
+          const { error: updateInvestmentError } = await supabase
+            .from('investments')
+            .update({ 
+              days_left: investment.days_left - 1
+            })
+            .eq('id', investment.id);
+
+          if (updateInvestmentError) {
+            console.error(`Error updating investment ${investment.id}:`, updateInvestmentError);
+            // Continue with other investments even if one fails
+            continue;
+          }
+
+          processedCount++;
+          totalAmountDistributed += dailyIncome;
         }
-
-        processedCount++;
-        totalAmountDistributed += dailyIncome;
       }
     }
 

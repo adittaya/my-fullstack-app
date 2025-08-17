@@ -185,19 +185,23 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
                   )}
                 </div>
                 <div className="product-info">
-                  <span>Days Left</span>
-                  <span>{daysLeft > 0 ? daysLeft : 0}</span>
-                </div>
-                <div className="product-info">
-                  <span>Daily Income</span>
-                  <span>{formatCurrency(investment.daily_income || 0)}</span>
-                </div>
-                <div className="progress-container">
-                  <div 
-                    className="progress-bar" 
-                    style={{ width: `${progressPercentage > 100 ? 100 : progressPercentage}%` }}
-                  ></div>
-                </div>
+                <span>Days Left</span>
+                <span>{daysLeft > 0 ? daysLeft : 0}</span>
+              </div>
+              <div className="product-info">
+                <span>Daily Income</span>
+                <span>{formatCurrency(investment.daily_income || 0)}</span>
+              </div>
+              <div className="product-info">
+                <span>Earned Profit</span>
+                <span>{formatCurrency(investment.earned_profit || 0)}</span>
+              </div>
+              <div className="progress-container">
+                <div 
+                  className="progress-bar" 
+                  style={{ width: `${progressPercentage > 100 ? 100 : progressPercentage}%` }}
+                ></div>
+              </div>
                 <div className="status-badge active">Active</div>
               </div>
             );
