@@ -1811,7 +1811,8 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
           }
 
           // Record the daily profit in the daily_profits table
-          const { error: insertProfitError } = await supabase
+          console.log(`Attempting to record daily profit for user ${investment.user_id}, investment ${investment.id}, amount ${dailyIncome}`);
+          const { data: insertData, error: insertProfitError } = await supabase
             .from('daily_profits')
             .insert([
               {
@@ -1820,13 +1821,19 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
                 amount: dailyIncome,
                 processed_date: new Date().toISOString()
               }
-            ]);
+            ])
+            .select();
 
           if (insertProfitError) {
             console.error(`Error recording daily profit for user ${investment.user_id}:`, insertProfitError);
+            console.error(`Investment data:`, investment);
+            console.error(`Daily income:`, dailyIncome);
             // Continue with other investments even if one fails
             continue;
           }
+          
+          console.log(`Successfully recorded daily profit for user ${investment.user_id}, investment ${investment.id}, amount ${dailyIncome}`);
+          console.log(`Insert result:`, insertData);
 
           // Decrease days_left by 1
           const { error: updateInvestmentError } = await supabase
