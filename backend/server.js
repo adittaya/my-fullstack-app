@@ -311,6 +311,25 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     const { planId } = req.body;
     const userId = req.user.id;
 
+    // Fetch plan details first to get price and other information
+    const { data: planData, error: planError } = await supabase
+      .from('product_plans')
+      .select('id, name, price, duration_days')
+      .eq('id', planId)
+      .single();
+
+    if (planError) {
+      console.error('Supabase plan fetch error:', planError);
+      return res.status(400).json({ error: 'Invalid plan selected' });
+    }
+
+    const plan = {
+      id: planData.id,
+      name: planData.name,
+      price: planData.price,
+      duration_days: planData.duration_days
+    };
+
     // Fetch user data
     const { data: user, error: userError } = await supabase
       .from('users')
@@ -341,14 +360,14 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     let planCategory = 'general'; // Default category
     
     try {
-      const { data: planDetails, error: planDetailsError } = await supabase
+      const { data: planCategoryDetails, error: planCategoryError } = await supabase
         .from('product_plans')
         .select('category')
         .eq('id', planId)
         .single();
 
-      if (!planDetailsError && planDetails && planDetails.category) {
-        planCategory = planDetails.category;
+      if (!planCategoryError && planCategoryDetails && planCategoryDetails.category) {
+        planCategory = planCategoryDetails.category;
       }
     } catch (categoryError) {
       console.log('Category column not found or error fetching category, using default');
@@ -415,52 +434,6 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to update user balance' });
     }
 
-    // Record the investment with initial days_left as duration_days (profit starts after one day)
-    const { data: planDetails, error: planDetailsError } = await supabase
-      .from('product_plans')
-      .select('duration_days')
-      .eq('id', planId)
-      .single();
-
-    if (planDetailsError) {
-      console.error('Supabase plan details fetch error:', planDetailsError);
-      // Rollback balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', userId);
-      return res.status(500).json({ error: 'Failed to fetch plan details' });
-    }
-
-    // Validate that we have plan details
-    if (!planDetails || planDetails.duration_days === undefined) {
-      console.error('Invalid plan details:', planDetails);
-      // Rollback balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', userId);
-      return res.status(500).json({ error: 'Invalid plan details' });
-    }
-
     // Record the investment
     const { error: investmentError } = await supabase
       .from('investments')
@@ -472,28 +445,9 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
           amount: plan.price,
           purchase_date: new Date().toISOString(),
           status: 'active',
-          days_left: planDetails.duration_days // Track days left for profit calculation
+          days_left: plan.duration_days // Track days left for profit calculation
         }
       ]);
-
-    if (investmentError) {
-      console.error('Supabase investment insert error:', investmentError);
-      // Rollback balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', userId);
-      return res.status(500).json({ error: 'Failed to record investment' });
-    }
 
     res.json({
       message: 'Plan purchased successfully',
