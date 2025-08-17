@@ -752,7 +752,8 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
     const withdrawableBalance = totalEarnedProfit;
 
     // Check if user has sufficient withdrawable balance
-    if (withdrawableBalance < (totalWithdrawn + amount)) {
+    // Based on the requirement, users can withdraw up to their total earned profit
+    if (totalEarnedProfit < amount) {
       return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
