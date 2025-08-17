@@ -1,7 +1,7 @@
 # Complete Admin Panel Implementation - File Summary
 
 ## Database Schema
-- `database/admin-panel-schema.sql` - Complete database schema with all tables and admin user
+- `database/investment-platform-schema.sql` - Complete database schema with all tables and admin user
 
 ## Frontend Components
 - `frontend/src/components/AdminPanelComplete.js` - Complete admin panel React component

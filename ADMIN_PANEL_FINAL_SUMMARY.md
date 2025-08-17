@@ -1,7 +1,7 @@
 # Complete Admin Panel Implementation - File Summary
 
 ## Database Schema Files
-1. `database/admin-panel-schema.sql` - Complete database schema with all tables and admin user creation
+1. `database/investment-platform-schema.sql` - Complete database schema with all tables and admin user creation
 
 ## Frontend Component Files
 1. `frontend/src/components/AdminPanelComplete.js` - Complete admin panel React component with all functionality
@@ -22,7 +22,7 @@
 ## Existing Files (Already in Project)
 1. `frontend/src/components/AdminPanel.js` - Original admin panel implementation
 2. `docs/admin-panel.md` - Original admin panel documentation
-3. `database/complete-schema.sql` - Original database schema with admin user
+3. `database/investment-platform-schema.sql` - Original database schema with admin user
 4. `scripts/create-admin-user.js` - Original admin user creation script
 
 ## Key Features Implemented
@@ -65,7 +65,7 @@
 
 ## Setup Instructions
 
-1. **Database**: Run the `database/admin-panel-schema.sql` script in your Supabase database
+1. **Database**: Run the `database/investment-platform-schema.sql` script in your Supabase database
 2. **Backend**: The admin routes can be integrated into your existing server.js file or used as a separate module
 3. **Frontend**: Import the `AdminPanelComplete.js` component and add it to your routing
 4. **Admin User**: Run the `scripts/create-admin-user-complete.js` script to create the admin user

@@ -6,7 +6,7 @@ This is a complete admin panel implementation for the investment platform with a
 ## Files Included
 
 ### Database
-- `database/admin-panel-schema.sql` - Complete database schema with admin user
+- `database/investment-platform-schema.sql` - Complete database schema with admin user
 
 ### Frontend
 - `frontend/src/components/AdminPanelComplete.js` - Complete admin panel component
@@ -26,7 +26,7 @@ This is a complete admin panel implementation for the investment platform with a
 ### 1. Database Setup
 Run the SQL script to set up the database schema:
 ```sql
--- Run database/admin-panel-schema.sql in your Supabase SQL editor
+-- Run database/investment-platform-schema.sql in your Supabase SQL editor
 ```
 
 ### 2. Backend Setup

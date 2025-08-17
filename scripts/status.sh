@@ -32,7 +32,7 @@ echo "2. Checking required files..."
 FILES=(
     "/root/my-fullstack-app/frontend/package.json"
     "/root/my-fullstack-app/backend/package.json"
-    "/root/my-fullstack-app/database/schema.sql"
+    "/root/my-fullstack-app/database/investment-platform-schema.sql"
     "/root/my-fullstack-app/README.md"
 )
 

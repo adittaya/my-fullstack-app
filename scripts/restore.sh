@@ -67,8 +67,8 @@ fi
 # Restore database schema
 echo ""
 echo "4. Restoring database schema..."
-if [ -f "$BACKUP_DIR/schema.sql" ]; then
-    cp $BACKUP_DIR/schema.sql /root/my-fullstack-app/database/
+if [ -f "$BACKUP_DIR/investment-platform-schema.sql" ]; then
+    cp $BACKUP_DIR/investment-platform-schema.sql /root/my-fullstack-app/database/
     echo "Database schema restored successfully"
 else
     echo "Warning: Database schema not found in backup"

@@ -545,7 +545,7 @@ CREATE TABLE balance_adjustments (
 
 ### Database Setup (Supabase)
 1. Create a new Supabase project
-2. Run the SQL schema from `supabase_schema.sql`
+2. Run the SQL schema from `database/investment-platform-schema.sql`
 3. Configure environment variables with your Supabase credentials
 
 ## Troubleshooting

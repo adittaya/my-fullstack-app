@@ -53,7 +53,7 @@ my-fullstack-app/
 │   ├── package.json
 │   └── ...
 ├── database/
-│   ├── complete-schema.sql (Full database schema with all tables and admin user)
+│   ├── investment-platform-schema.sql (Full database schema with all tables and admin user)
 │   ├── add-admin-column-and-user.sql (Script to add admin column and create admin user)
 │   └── ...
 ├── docs/
@@ -61,7 +61,7 @@ my-fullstack-app/
 ├── scripts/
 │   ├── create-admin-user.js (Node.js script to create admin user)
 │ └── ...
-├── supabase_schema.sql (Complete database schema with all tables)
+├── database/investment-platform-schema.sql (Complete database schema with all tables)
 ├── netlify.toml (Netlify redirects for API proxying)
 ├── render.yaml (Render deployment config)
 └── README.md
@@ -173,7 +173,7 @@ The database includes the following tables:
 
 ## Database Setup
 To set up the database from scratch, run the complete schema file:
-database/complete-schema.sql
+database/investment-platform-schema.sql
 
 This will create all tables, indexes, functions, sample data, and the admin user.
 
@@ -192,7 +192,7 @@ When continuing work on this project, you can:
 1. /storage/emulated/0/tempdat/refresh_schema_cache.sql - SQL script to fix schema cache issues
 2. /storage/emulated/0/tempdat/fix_updated_at_error.sql - Alternative SQL script to fix updated_at column issues
 3. backend/server.js - Backend code with recent fixes for user balance updates
-4. database/complete-schema.sql - Complete database schema with updated_at column
+4. database/investment-platform-schema.sql - Complete database schema with updated_at column
 5. database/add-admin-column-and-user.sql - Script to add admin column and create admin user
 
 ## Git Repository Status

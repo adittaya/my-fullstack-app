@@ -16,7 +16,7 @@ This document describes the implementation of a new feature in the admin panel t
    - Returns statistics about the process (number of investments processed and total amount distributed)
 
 2. **Fixed Supabase Schema**
-   - Corrected syntax error in the `decrement_user_balance` function in `supabase_schema.sql`
+   - Corrected syntax error in the `decrement_user_balance` function in `database/investment-platform-schema.sql`
 
 ### Frontend Changes
 

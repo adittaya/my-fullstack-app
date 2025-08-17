@@ -24,6 +24,6 @@ echo "Applying database migrations..."
 
 # Or run the SQL file directly
 echo "Running SQL schema file..."
-# psql -h your-db-host -d your-db-name -U your-db-user -f supabase_schema.sql
+# psql -h your-db-host -d your-db-name -U your-db-user -f database/investment-platform-schema.sql
 
 echo "Database initialization completed!"

@@ -7,11 +7,11 @@ This document provides a complete overview of the admin panel implementation for
 The admin panel is already fully implemented in the existing codebase:
 - Backend routes are implemented in `/root/my-fullstack-app/backend/server.js`
 - Frontend component exists in `/root/my-fullstack-app/frontend/src/components/AdminPanel.js`
-- Database schema is implemented in `/root/my-fullstack-app/database/complete-schema.sql`
+- Database schema is implemented in `/root/my-fullstack-app/database/investment-platform-schema.sql`
 
 ## Additional Implementation from Scratch
 I've also created a complete implementation from scratch as a reference:
-- Database schema: `/root/my-fullstack-app/database/admin-panel-schema.sql`
+- Database schema: `/root/my-fullstack-app/database/investment-platform-schema.sql`
 - Frontend component: `/root/my-fullstack-app/frontend/src/components/AdminPanelComplete.js`
 - Frontend styling: `/root/my-fullstack-app/frontend/src/components/AdminPanelComplete.css`
 - Backend routes: `/root/my-fullstack-app/backend/admin-routes.js`

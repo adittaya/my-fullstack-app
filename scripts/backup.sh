@@ -23,7 +23,7 @@ cp -r /root/my-fullstack-app/docs $BACKUP_DIR/
 
 echo ""
 echo "4. Backing up database schema..."
-cp /root/my-fullstack-app/database/schema.sql $BACKUP_DIR/
+cp /root/my-fullstack-app/database/investment-platform-schema.sql $BACKUP_DIR/
 
 echo ""
 echo "5. Backing up scripts..."

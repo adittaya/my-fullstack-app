@@ -143,7 +143,7 @@ REACT_APP_API_URL=https://my-fullstack-app-backend-2omq.onrender.com
 
 ### 3. Database (Supabase)
 1. Create a Supabase project
-2. Run the schema from `supabase_schema.sql`
+2. Run the schema from `database/investment-platform-schema.sql`
 3. Configure environment variables with your Supabase credentials
 
 ## Development Setup
