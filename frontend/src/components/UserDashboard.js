@@ -123,10 +123,12 @@ function UserDashboard({ token, userData, onLogout, onViewChange }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '16px'
+            fontSize: '16px',
+            cursor: 'pointer'
           }}
+          title="Logout"
         >
-          ↪
+          ⇦
         </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
           <div style={{ 

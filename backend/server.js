@@ -588,6 +588,20 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Fetch user's current balance
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', userId)
+      .single();
+
+    if (userError) {
+      console.error('Supabase user fetch error:', userError);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+
+    const currentBalance = parseFloat(user.balance) || 0;
+
     // Fetch user investments to calculate total profit
     const { data: investments, error: investmentsError } = await supabase
       .from('investments')
@@ -654,8 +668,9 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
     // Calculate total withdrawn amount
     const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
     
-    // Calculate withdrawable balance (total earned profit - total withdrawn)
-    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
+    // Calculate withdrawable balance based on current balance
+    // This is a more accurate representation of what the user can actually withdraw
+    const withdrawableBalance = Math.max(0, currentBalance);
 
     res.json({
       message: 'Financial summary fetched successfully',
@@ -744,11 +759,9 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch withdrawals' });
     }
 
-    // Calculate total withdrawn amount
-    const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
-    
-    // Calculate withdrawable balance (total earned profit - total withdrawn)
-    const withdrawableBalance = Math.max(0, totalEarnedProfit - totalWithdrawn);
+    // Calculate withdrawable balance based on current balance
+    // This is a more accurate representation of what the user can actually withdraw
+    const withdrawableBalance = Math.max(0, currentBalance);
 
     // Check if user has sufficient withdrawable balance
     if (withdrawableBalance < amount) {
