@@ -500,7 +500,8 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
         user_id,
         plan_id,
         amount,
-        status
+        status,
+        days_left
       `)
       .eq('status', 'active');
 
@@ -530,23 +531,41 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
     let totalAmountDistributed = 0;
 
     for (const investment of investments) {
-      const dailyIncome = planIncomeMap[investment.plan_id];
-      
-      if (dailyIncome && dailyIncome > 0) {
-        // Add daily income to user's balance
-        const { error: updateError } = await supabase.rpc('increment_user_balance', {
-          user_id: investment.user_id,
-          amount: dailyIncome
-        });
+      // Only distribute profit if days_left is greater than 0
+      // and days_left is less than or equal to duration_days (to prevent overpayment)
+      if (investment.days_left > 0) {
+        const dailyIncome = planIncomeMap[investment.plan_id];
+        
+        if (dailyIncome && dailyIncome > 0) {
+          // Add daily income to user's balance
+          const { error: updateError } = await supabase.rpc('increment_user_balance', {
+            user_id: investment.user_id,
+            amount: dailyIncome
+          });
 
-        if (updateError) {
-          console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
-          // Continue with other investments even if one fails
-          continue;
+          if (updateError) {
+            console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
+            // Continue with other investments even if one fails
+            continue;
+          }
+
+          // Decrease days_left by 1
+          const { error: updateInvestmentError } = await supabase
+            .from('investments')
+            .update({ 
+              days_left: investment.days_left - 1
+            })
+            .eq('id', investment.id);
+
+          if (updateInvestmentError) {
+            console.error(`Error updating investment ${investment.id}:`, updateInvestmentError);
+            // Continue with other investments even if one fails
+            continue;
+          }
+
+          processedCount++;
+          totalAmountDistributed += dailyIncome;
         }
-
-        processedCount++;
-        totalAmountDistributed += dailyIncome;
       }
     }
 
