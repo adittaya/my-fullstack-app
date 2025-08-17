@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS investments (
   amount DECIMAL(10, 2) NOT NULL,
   purchase_date TIMESTAMP DEFAULT NOW(),
   status VARCHAR(50) DEFAULT 'active',
+  days_left INTEGER,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
