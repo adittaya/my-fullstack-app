@@ -1020,6 +1020,94 @@ app.get('/api/referral-link', authenticateToken, (req, res) => {
   }
 });
 
+// Get referral details endpoint
+app.get('/api/referral-details', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get users referred by this user
+    const { data: referredUsers, error: referredError } = await supabase
+      .from('users')
+      .select('id, name, email, created_at')
+      .eq('referred_by', userId);
+      
+    // If the referred_by column doesn't exist, return empty arrays
+    if (referredError && referredError.message.includes('column')) {
+      console.log('Referred_by column not found, returning empty referral data');
+      return res.json({
+        referredUsers: [],
+        activeReferrals: []
+      });
+    }
+    
+    if (referredError) throw referredError;
+    
+    // Get investment details for referred users to determine active referrals
+    const referredUserIds = referredUsers.map(user => user.id);
+    let activeReferrals = [];
+    
+    if (referredUserIds.length > 0) {
+      const { data: investments, error: investmentsError } = await supabase
+        .from('investments')
+        .select('user_id, plan_name, amount, purchase_date')
+        .in('user_id', referredUserIds);
+        
+      if (investmentsError) throw investmentsError;
+      
+      // Group investments by user to determine who has at least one investment
+      const userInvestments = {};
+      investments.forEach(investment => {
+        if (!userInvestments[investment.user_id]) {
+          userInvestments[investment.user_id] = [];
+        }
+        userInvestments[investment.user_id].push(investment);
+      });
+      
+      // Mark users with at least one investment as active referrals
+      activeReferrals = referredUsers.filter(user => userInvestments[user.id] && userInvestments[user.id].length > 0);
+    }
+    
+    res.json({
+      referredUsers,
+      activeReferrals
+    });
+  } catch (error) {
+    console.error('Referral details error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get leader box winners endpoint
+app.get('/api/leader-box-winners', authenticateToken, async (req, res) => {
+  try {
+    // Generate fake winners (10 entries with random amounts between 1-5 lakh)
+    const fakeWinners = [];
+    const firstNames = ['Raj', 'Priya', 'Amit', 'Sneha', 'Vikas', 'Anjali', 'Rohit', 'Neha', 'Deepak', 'Pooja'];
+    const lastNames = ['Sharma', 'Patel', 'Singh', 'Gupta', 'Yadav', 'Kumar', 'Das', 'Reddy', 'Verma', 'Mishra'];
+    
+    for (let i = 0; i < 10; i++) {
+      const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      const amount = Math.floor(Math.random() * 500000) + 100000; // Between 1-5 lakh
+      const formattedAmount = amount.toLocaleString('en-IN');
+      
+      fakeWinners.push({
+        id: i + 1,
+        name: `${firstName} ${lastName}`,
+        amount: formattedAmount,
+        date: new Date(Date.now() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Random date within last 7 days
+      });
+    }
+    
+    res.json({
+      winners: fakeWinners
+    });
+  } catch (error) {
+    console.error('Leader box winners error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Admin middleware - checks if user is admin
 const authenticateAdmin = async (req, res, next) => {
   const authHeader = req.headers['authorization'];

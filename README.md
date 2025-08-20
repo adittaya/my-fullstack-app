@@ -28,6 +28,37 @@ A complete investment platform with user authentication, product plans, daily in
 - UPI ID Copying: One-click copy of the entire UPI ID
 - Admin Approval: Recharges require admin approval for security
 
+### ✅ 6. Referral System:
+- Refer & Earn: Users can invite friends and earn rewards
+- Active Referral Tracking: See who you've referred and which are active
+- Leader Box: Daily winners display with prizes from 1-5 lakh rupees
+
+## Referral System Details
+
+The referral system allows users to invite friends and earn rewards:
+
+1. **Referral Rewards**:
+   - Users earn ₹100 for each active referral (one-time payment per referred user)
+   - Referred friends receive ₹50 as a welcome bonus
+   - Active referral means the referred user has made at least one investment
+
+2. **Tracking Features**:
+   - View all users you've referred
+   - See which referrals are active (have made investments)
+   - Detailed list of referral activity
+
+3. **Leader Box**:
+   - Daily display of top 10 winners with prizes from 1-5 lakh rupees
+   - Winners are randomly generated each day for demonstration purposes
+   - Provides motivation and engagement for users
+
+## API Endpoints
+
+### Referral Endpoints:
+- `GET /api/referral-link` - Get user's referral link
+- `GET /api/referral-details` - Get detailed referral information
+- `GET /api/leader-box-winners` - Get daily leader box winners
+
 ### ✅ 6. Sharing System:
 - Easy Sharing Button: Users can simply click to copy a referral link to share with others
 
@@ -126,6 +157,32 @@ The frontend uses environment variables for API configuration:
 ```
 REACT_APP_API_URL=https://my-fullstack-app-backend-2omq.onrender.com
 ```
+
+## Referral System Details
+
+The referral system allows users to invite friends and earn rewards:
+
+1. **Referral Rewards**:
+   - Users earn ₹100 for each active referral (one-time payment per referred user)
+   - Referred friends receive ₹50 as a welcome bonus
+   - Active referral means the referred user has made at least one investment
+
+2. **Tracking Features**:
+   - View all users you've referred
+   - See which referrals are active (have made investments)
+   - Detailed list of referral activity
+
+3. **Leader Box**:
+   - Daily display of top 10 winners with prizes from 1-5 lakh rupees
+   - Winners are randomly generated each day for demonstration purposes
+   - Provides motivation and engagement for users
+
+## API Endpoints
+
+### Referral Endpoints:
+- `GET /api/referral-link` - Get user's referral link
+- `GET /api/referral-details` - Get detailed referral information
+- `GET /api/leader-box-winners` - Get daily leader box winners
 
 ## How to Deploy
 
