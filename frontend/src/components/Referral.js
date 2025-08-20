@@ -171,8 +171,21 @@ function Referral({ token, userData, onBack }) {
         <div style={{ width: '40px' }}></div> {/* Spacer for alignment */}
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && <div className="error">{error}</div>}
+      {success && <div className="success">{success}</div>}
+      
+      {/* Debug: Show current active tab */}
+      <div style={{ 
+        padding: '8px', 
+        background: 'rgba(255, 215, 0, 0.1)', 
+        borderRadius: '4px', 
+        marginBottom: '12px',
+        textAlign: 'center',
+        color: 'var(--gold-primary)',
+        fontSize: '14px'
+      }}>
+        Active Tab: {activeTab}
+      </div>
 
       {/* Tab Navigation */}
       <div style={{ 
@@ -181,7 +194,8 @@ function Referral({ token, userData, onBack }) {
         marginBottom: '24px',
         background: 'rgba(30, 30, 50, 0.5)',
         padding: '4px',
-        borderRadius: '12px'
+        borderRadius: '12px',
+        border: '1px solid var(--card-border)'
       }}>
         <button
           onClick={() => setActiveTab('referral')}
@@ -189,9 +203,9 @@ function Referral({ token, userData, onBack }) {
             flex: 1,
             padding: '12px',
             borderRadius: '8px',
-            border: 'none',
+            border: '1px solid var(--gold-primary)',
             background: activeTab === 'referral' ? 'var(--gold-primary)' : 'transparent',
-            color: activeTab === 'referral' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            color: activeTab === 'referral' ? 'var(--text-primary)' : 'var(--gold-primary)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -204,9 +218,9 @@ function Referral({ token, userData, onBack }) {
             flex: 1,
             padding: '12px',
             borderRadius: '8px',
-            border: 'none',
+            border: '1px solid var(--gold-primary)',
             background: activeTab === 'details' ? 'var(--gold-primary)' : 'transparent',
-            color: activeTab === 'details' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            color: activeTab === 'details' ? 'var(--text-primary)' : 'var(--gold-primary)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -219,9 +233,9 @@ function Referral({ token, userData, onBack }) {
             flex: 1,
             padding: '12px',
             borderRadius: '8px',
-            border: 'none',
+            border: '1px solid var(--gold-primary)',
             background: activeTab === 'leaderbox' ? 'var(--gold-primary)' : 'transparent',
-            color: activeTab === 'leaderbox' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            color: activeTab === 'leaderbox' ? 'var(--text-primary)' : 'var(--gold-primary)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
