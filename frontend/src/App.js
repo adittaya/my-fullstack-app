@@ -11,7 +11,7 @@ import AdminPanel from './components/AdminPanel';
 function App() {
   const [, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'admin-login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral', 'admin'
+  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral', 'admin'
   const [loginFormData, setLoginFormData] = useState({
     mobile: '',
     password: ''
@@ -95,28 +95,6 @@ function App() {
       fetchUserData(response.data.token);
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    
-    try {
-      const response = await axios.post('/api/admin/login', loginFormData);
-      
-      setToken(response.data.token);
-      setUser(response.data.user);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      setSuccess('Admin login successful!');
-      setView('admin');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Admin login failed');
     } finally {
       setLoading(false);
     }
@@ -224,57 +202,10 @@ function App() {
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
-          <div className="admin-login-link">
-            <button onClick={() => setView('admin-login')}>Admin Login</button>
-          </div>
         </div>
         <div className="auth-footer">
           Don't have an account?{' '}
           <button onClick={() => setView('register')}>Register</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAdminLoginForm = () => (
-    <div className="auth-page">
-      <div className="auth-form-container">
-        <div className="auth-header">
-          <h1>InvestPro Admin</h1>
-          <p>Administrator Portal</p>
-        </div>
-        <div className="auth-form">
-          <h2>Admin Login</h2>
-          {error && <div className="error">{error}</div>}
-          {success && <div className="success">{success}</div>}
-          <form onSubmit={handleAdminLogin}>
-            <div className="form-group">
-              <input
-                type="tel"
-                name="mobile"
-                placeholder="Admin Mobile: 9999999999"
-                value={loginFormData.mobile}
-                onChange={handleLoginInputChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="password"
-                name="password"
-                placeholder="Admin Password: Admin123!"
-                value={loginFormData.password}
-                onChange={handleLoginInputChange}
-                required
-              />
-            </div>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Logging in...' : 'Admin Login'}
-            </button>
-          </form>
-        </div>
-        <div className="auth-footer">
-          <button onClick={() => setView('login')}>User Login</button>
         </div>
       </div>
     </div>
@@ -411,7 +342,6 @@ function App() {
         // Non-authenticated views
         <>
           {view === 'login' && renderLoginForm()}
-          {view === 'admin-login' && renderAdminLoginForm()}
           {view === 'register' && renderRegisterForm()}
         </>
       ) : (
