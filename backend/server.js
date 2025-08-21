@@ -261,7 +261,7 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     // Fetch user data from Supabase
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, mobile, balance, recharge_balance, is_admin')
+      .select('id, name, email, mobile, product_revenue_wallet, withdrawable_wallet, is_admin')
       .eq('id', req.user.id)
       .single();
 
@@ -343,7 +343,7 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
     // Fetch plan details first to get price and other information
     const { data: planData, error: planError } = await supabase
       .from('product_plans')
-      .select('id, name, price, duration_days')
+      .select('id, name, price, duration_days, daily_income')
       .eq('id', planId)
       .single();
 
@@ -356,13 +356,14 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       id: planData.id,
       name: planData.name,
       price: planData.price,
-      duration_days: planData.duration_days
+      duration_days: planData.duration_days,
+      daily_income: planData.daily_income
     };
 
     // Fetch user data
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance, recharge_balance')
+      .select('withdrawable_wallet')
       .eq('id', userId)
       .single();
 
@@ -371,91 +372,19 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    // Use recharge_balance for purchase validation
-    const userRechargeBalance = user.recharge_balance !== undefined ? user.recharge_balance : user.balance;
-
-    // Check if user has sufficient recharge balance
-    if (userRechargeBalance < plan.price) {
+    // Check if user has sufficient withdrawable balance for purchase
+    if (user.withdrawable_wallet < plan.price) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    // Check if user already has a plan purchased in the same category this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    // Fetch the category of the plan being purchased
-    // We'll handle cases where the category column might not exist
-    let planCategory = 'general'; // Default category
-    
-    try {
-      const { data: planCategoryDetails, error: planCategoryError } = await supabase
-        .from('product_plans')
-        .select('category')
-        .eq('id', planId)
-        .single();
-
-      if (!planCategoryError && planCategoryDetails && planCategoryDetails.category) {
-        planCategory = planCategoryDetails.category;
-      }
-    } catch (categoryError) {
-      console.log('Category column not found or error fetching category, using default');
-    }
-
-    // Check if user already purchased a plan in this category this month
-    const { data: existingPurchases, error: purchaseError } = await supabase
-      .from('investments')
-      .select('id, plan_id')
-      .eq('user_id', userId)
-      .gte('purchase_date', startOfMonth.toISOString());
-
-    if (purchaseError) {
-      console.error('Supabase purchase check error:', purchaseError);
-      return res.status(500).json({ error: 'Failed to check existing purchases' });
-    }
-
-    // Get categories of existing purchases
-    if (existingPurchases.length > 0) {
-      // Get plan details for all existing purchases
-      const existingPlanIds = existingPurchases.map(purchase => purchase.plan_id);
-      
-      try {
-        const { data: existingPlanDetails, error: existingPlanError } = await supabase
-          .from('product_plans')
-          .select('id, category')
-          .in('id', existingPlanIds);
-
-        if (!existingPlanError && existingPlanDetails) {
-          // Check if any existing purchase is in the same category
-          const sameCategoryPurchase = existingPlanDetails.find(plan => 
-            plan.category === planCategory);
-          if (sameCategoryPurchase) {
-            return res.status(400).json({ 
-              error: `You have already purchased a plan in the ${planCategory} category this month. You can purchase another plan in a different category.` 
-            });
-          }
-        }
-      } catch (existingPlanError) {
-        console.log('Error fetching existing plan details, skipping category check');
-      }
-    }
-
-    // Deduct plan price from user recharge balance
-    const newBalance = user.balance - plan.price;
-    const newRechargeBalance = (user.recharge_balance !== undefined ? user.recharge_balance : user.balance) - plan.price;
-    
-    const updateData = { 
-      balance: newBalance
-    };
-    
-    // Only update recharge_balance if it exists in the table
-    if (user.recharge_balance !== undefined) {
-      updateData.recharge_balance = newRechargeBalance;
-    }
+    // Deduct plan price from user withdrawable wallet
+    const newWithdrawableBalance = user.withdrawable_wallet - plan.price;
     
     const { error: updateError } = await supabase
       .from('users')
-      .update(updateData)
+      .update({ 
+        withdrawable_wallet: newWithdrawableBalance
+      })
       .eq('id', userId);
 
     if (updateError) {
@@ -478,9 +407,22 @@ app.post('/api/purchase-plan', authenticateToken, async (req, res) => {
         }
       ]);
 
+    if (investmentError) {
+      // Rollback balance update if investment recording fails
+      await supabase
+        .from('users')
+        .update({ 
+          withdrawable_wallet: user.withdrawable_wallet
+        })
+        .eq('id', userId);
+      
+      console.error('Supabase investment insert error:', investmentError);
+      return res.status(500).json({ error: 'Failed to record investment' });
+    }
+
     res.json({
       message: 'Plan purchased successfully',
-      newBalance: newBalance
+      newWithdrawableBalance: newWithdrawableBalance
     });
   } catch (error) {
     console.error('Purchase plan error:', error);
@@ -503,7 +445,8 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
         amount,
         purchase_date,
         status,
-        days_left
+        days_left,
+        product_plans (id, daily_income, duration_days, total_return, price)
       `)
       .eq('user_id', userId)
       .order('purchase_date', { ascending: false });
@@ -513,66 +456,37 @@ app.get('/api/investments', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch investments' });
     }
 
-    // If we have investments, enhance them with plan details
-    if (investments && investments.length > 0) {
-      // Get all unique plan_ids from investments
-      const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
+    // Enhance investments with plan details and calculate profit
+    const enhancedInvestments = investments.map(investment => {
+      const planDetails = investment.product_plans || {};
+      const profit = planDetails.total_return && planDetails.price ? 
+        planDetails.total_return - planDetails.price : 0;
       
-      if (planIds.length > 0) {
-        // Fetch plan details for all unique plan_ids
-        const { data: plans, error: plansError } = await supabase
-          .from('product_plans')
-          .select('id, daily_income, duration_days, total_return, price')
-          .in('id', planIds);
-        
-        if (!plansError && plans) {
-          // Create a map of plan_id to plan details
-          const planMap = {};
-          plans.forEach(plan => {
-            planMap[plan.id] = plan;
-          });
-          
-          // Enhance investments with plan details and calculate profit
-          const enhancedInvestments = investments.map(investment => {
-            const planDetails = planMap[investment.plan_id] || {};
-            const profit = planDetails.total_return && planDetails.price ? 
-              planDetails.total_return - planDetails.price : 0;
-            
-            // Calculate earned profit based on days passed
-            // Profit starts after one day, so we calculate based on (duration_days - days_left)
-            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
-              planDetails.duration_days - investment.days_left : 0;
-            const earnedProfit = daysPassed > 0 ? 
-              daysPassed * (planDetails.daily_income || 0) : 0;
-            
-            return {
-              ...investment,
-              daily_income: planDetails.daily_income || 0,
-              duration_days: planDetails.duration_days || 0,
-              total_return: planDetails.total_return || 0,
-              price: planDetails.price || 0,
-              profit: profit,
-              earned_profit: earnedProfit
-            };
-          });
-          
-          // Calculate total earned profit from all investments
-          const totalEarnedProfit = enhancedInvestments.reduce((sum, investment) => sum + investment.earned_profit, 0);
-          
-          return res.json({
-            message: 'Investments fetched successfully',
-            investments: enhancedInvestments,
-            totalProfit: totalEarnedProfit
-          });
-        }
-      }
-    }
+      // Calculate earned profit based on days passed
+      // Profit starts after one day, so we calculate based on (duration_days - days_left)
+      const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
+        planDetails.duration_days - investment.days_left : 0;
+      const earnedProfit = daysPassed > 0 ? 
+        daysPassed * (planDetails.daily_income || 0) : 0;
+      
+      return {
+        ...investment,
+        daily_income: planDetails.daily_income || 0,
+        duration_days: planDetails.duration_days || 0,
+        total_return: planDetails.total_return || 0,
+        price: planDetails.price || 0,
+        profit: profit,
+        earned_profit: earnedProfit
+      };
+    });
+    
+    // Calculate total earned profit from all investments
+    const totalEarnedProfit = enhancedInvestments.reduce((sum, investment) => sum + investment.earned_profit, 0);
 
-    // If no investments or no plan details, return basic investments data
     res.json({
       message: 'Investments fetched successfully',
-      investments: investments || [],
-      totalProfit: 0
+      investments: enhancedInvestments,
+      totalProfit: totalEarnedProfit
     });
   } catch (error) {
     console.error('Investments fetch error:', error);
@@ -585,10 +499,10 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch user's current balance
+    // Fetch user's wallet balances
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance')
+      .select('product_revenue_wallet, withdrawable_wallet')
       .eq('id', userId)
       .single();
 
@@ -597,7 +511,8 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    const currentBalance = parseFloat(user.balance) || 0;
+    const productRevenueWallet = parseFloat(user.product_revenue_wallet) || 0;
+    const withdrawableWallet = parseFloat(user.withdrawable_wallet) || 0;
 
     // Fetch user investments to calculate total theoretical profit
     const { data: investments, error: investmentsError } = await supabase
@@ -605,7 +520,10 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
       .select(`
         id,
         plan_id,
-        days_left
+        amount,
+        days_left,
+        status,
+        product_plans (id, daily_income, duration_days)
       `)
       .eq('user_id', userId);
 
@@ -616,39 +534,20 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
 
     let totalEarnedProfit = 0;
     
-    // If we have investments, calculate total theoretical earned profit
-    if (investments && investments.length > 0) {
-      // Get all unique plan_ids from investments
-      const planIds = [...new Set(investments.map(inv => inv.plan_id).filter(id => id))];
-      
-      if (planIds.length > 0) {
-        // Fetch plan details for all unique plan_ids
-        const { data: plans, error: plansError } = await supabase
-          .from('product_plans')
-          .select('id, daily_income, duration_days')
-          .in('id', planIds);
-        
-        if (!plansError && plans) {
-          // Create a map of plan_id to plan details
-          const planMap = {};
-          plans.forEach(plan => {
-            planMap[plan.id] = plan;
-          });
-          
-          // Calculate total theoretical earned profit from all investments
-          totalEarnedProfit = investments.reduce((sum, investment) => {
-            const planDetails = planMap[investment.plan_id] || {};
-            // Calculate earned profit based on days passed
-            // Profit starts after one day, so we calculate based on (duration_days - days_left)
-            const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
-              planDetails.duration_days - investment.days_left : 0;
-            const earnedProfit = daysPassed > 0 ? 
-              daysPassed * (planDetails.daily_income || 0) : 0;
-            return sum + earnedProfit;
-          }, 0);
-        }
+    // Calculate total theoretical earned profit from all investments
+    totalEarnedProfit = investments.reduce((sum, investment) => {
+      if (investment.product_plans && investment.status === 'active') {
+        const planDetails = investment.product_plans;
+        // Calculate earned profit based on days passed
+        // Profit starts after one day, so we calculate based on (duration_days - days_left)
+        const daysPassed = planDetails.duration_days && investment.days_left !== undefined ? 
+          planDetails.duration_days - investment.days_left : 0;
+        const earnedProfit = daysPassed > 0 ? 
+          daysPassed * (planDetails.daily_income || 0) : 0;
+        return sum + earnedProfit;
       }
-    }
+      return sum;
+    }, 0);
 
     // Fetch processed daily profits to calculate actual withdrawable balance
     // This represents profits that have actually been added to the user's balance through daily recycling
@@ -682,14 +581,16 @@ app.get('/api/financial-summary', authenticateToken, async (req, res) => {
     
     // Calculate withdrawable balance (total processed daily profits - total withdrawn)
     // Only profits that have been processed through daily recycling can be withdrawn
-    const withdrawableBalance = Math.max(0, totalProcessedProfits - totalWithdrawn);
+    const actualWithdrawableBalance = Math.max(0, totalProcessedProfits - totalWithdrawn);
 
     res.json({
       message: 'Financial summary fetched successfully',
+      productRevenueWallet: productRevenueWallet,
+      withdrawableWallet: withdrawableWallet,
       totalProfit: totalEarnedProfit,
       totalProcessedProfits: totalProcessedProfits,
       totalWithdrawn: totalWithdrawn,
-      withdrawableBalance: withdrawableBalance
+      actualWithdrawableBalance: actualWithdrawableBalance
     });
   } catch (error) {
     console.error('Financial summary fetch error:', error);
@@ -708,42 +609,20 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid withdrawal amount' });
     }
 
-    // Fetch processed daily profits to calculate actual withdrawable balance
-    // This represents profits that have actually been added to the user's balance through daily recycling
-    const { data: dailyProfits, error: dailyProfitsError } = await supabase
-      .from('daily_profits')
-      .select('amount')
-      .eq('user_id', userId);
+    // Fetch user's withdrawable wallet balance
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('withdrawable_wallet')
+      .eq('id', userId)
+      .single();
 
-    if (dailyProfitsError) {
-      console.error('Supabase daily profits fetch error:', dailyProfitsError);
-      return res.status(500).json({ error: 'Failed to fetch daily profits' });
+    if (userError) {
+      console.error('Supabase user fetch error:', userError);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-
-    // Calculate total processed daily profits (actual withdrawable amount)
-    const totalProcessedProfits = dailyProfits.reduce((sum, profit) => sum + profit.amount, 0);
-
-    // Fetch approved withdrawals to calculate withdrawn amount
-    const { data: withdrawals, error: withdrawalsError } = await supabase
-      .from('withdrawals')
-      .select('amount')
-      .eq('user_id', userId)
-      .eq('status', 'approved');
-
-    if (withdrawalsError) {
-      console.error('Supabase withdrawals fetch error:', withdrawalsError);
-      return res.status(500).json({ error: 'Failed to fetch withdrawals' });
-    }
-
-    // Calculate total withdrawn amount
-    const totalWithdrawn = withdrawals.reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
-    
-    // Calculate withdrawable balance (total processed daily profits - total withdrawn)
-    // Only profits that have been processed through daily recycling can be withdrawn
-    const withdrawableBalance = Math.max(0, totalProcessedProfits - totalWithdrawn);
 
     // Check if user has sufficient withdrawable balance
-    if (withdrawableBalance < amount) {
+    if (user.withdrawable_wallet < amount) {
       return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
@@ -1235,54 +1114,12 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
       return res.status(404).json({ error: 'Pending recharge request not found' });
     }
 
-    // Update user balance
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance, recharge_balance')
-      .eq('id', recharge.user_id)
-      .single();
-
-    if (userError) {
-      console.error('Supabase user fetch error:', userError);
-      return res.status(500).json({ error: 'Failed to fetch user data' });
-    }
-
+    // Update user withdrawable wallet
     const rechargeAmount = parseFloat(recharge.amount);
-    const newBalance = parseFloat(user.balance) + rechargeAmount;
-    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + rechargeAmount;
     
-    // Log values for debugging
-    console.log('Updating user balance:', {
-      userId: recharge.user_id,
-      currentBalance: user.balance,
-      currentRechargeBalance: user.recharge_balance,
-      rechargeAmount: recharge.amount,
-      calculatedNewBalance: newBalance,
-      calculatedNewRechargeBalance: newRechargeBalance,
-      typeofCurrentBalance: typeof user.balance,
-      typeofRechargeAmount: typeof recharge.amount,
-      typeofNewBalance: typeof newBalance
-    });
-
-    // Update user balance
-    const updateData = { 
-      balance: newBalance
-    };
-    
-    // Only update recharge_balance if it exists in the table
-    if (user.recharge_balance !== undefined) {
-      updateData.recharge_balance = newRechargeBalance;
-    }
-    
-    const { data: updateDataResult, error: updateError } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', recharge.user_id)
-      .select();
-
-    console.log('Supabase update response:', {
-      data: updateData,
-      error: updateError
+    const { error: updateError } = await supabase.rpc('increment_user_withdrawable_wallet', {
+      user_id: recharge.user_id,
+      amount: rechargeAmount
     });
 
     if (updateError) {
@@ -1291,19 +1128,11 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
         error: 'Failed to update user balance: ' + updateError.message,
         details: {
           userId: recharge.user_id,
-          currentBalance: user.balance,
-          rechargeAmount: recharge.amount,
-          newBalance: newBalance
+          rechargeAmount: recharge.amount
         }
       });
     }
     
-    // Log successful update
-    console.log('User balance updated successfully:', {
-      userId: recharge.user_id,
-      newBalance: newBalance
-    });
-
     // Update recharge status
     const { error: rechargeUpdateError, count } = await supabase
       .from('recharges')
@@ -1317,19 +1146,10 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     if (rechargeUpdateError) {
       console.error('Supabase recharge update error:', rechargeUpdateError);
       // Rollback user balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', recharge.user_id);
+      await supabase.rpc('decrement_user_withdrawable_wallet', {
+        user_id: recharge.user_id,
+        amount: rechargeAmount
+      });
       
       return res.status(500).json({ error: 'Failed to update recharge status: ' + rechargeUpdateError.message });
     }
@@ -1337,26 +1157,16 @@ app.post('/api/admin/recharge/:id/approve', authenticateAdmin, async (req, res) 
     // Check if any rows were updated (recharge was actually pending)
     if (count === 0) {
       // Rollback user balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', recharge.user_id);
+      await supabase.rpc('decrement_user_withdrawable_wallet', {
+        user_id: recharge.user_id,
+        amount: rechargeAmount
+      });
       
       return res.status(400).json({ error: 'Recharge request is no longer pending or was already processed' });
     }
 
     res.json({
-      message: 'Recharge approved successfully',
-      newBalance
+      message: 'Recharge approved successfully'
     });
   } catch (error) {
     console.error('Recharge approval error:', error);
@@ -1427,33 +1237,14 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
       return res.status(404).json({ error: 'Pending withdrawal request not found' });
     }
 
-    // Deduct amount from user's balance
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, name, email, balance, recharge_balance')
-      .eq('id', withdrawal.user_id)
-      .single();
+    // Deduct amount from user's withdrawable wallet
+    const { data: userData, error: userError } = await supabase.rpc('decrement_user_withdrawable_wallet', {
+      user_id: withdrawal.user_id,
+      amount: withdrawal.amount
+    });
 
     if (userError || !userData) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const withdrawalAmount = parseFloat(withdrawal.amount);
-    const newBalance = parseFloat(userData.balance) - withdrawalAmount;
-
-    const updateData = { 
-      balance: newBalance
-    };
-    
-    const { data: updateDataResult, error: updateError } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', withdrawal.user_id)
-      .select();
-
-    if (updateError) {
-      console.error('Error updating user balance:', updateError);
-      return res.status(500).json({ error: 'Failed to update user balance' });
+      return res.status(404).json({ error: 'User not found or insufficient balance' });
     }
 
     // Update withdrawal status
@@ -1468,19 +1259,10 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
 
     if (withdrawalUpdateError) {
       // Rollback user balance update
-      const rollbackData = { 
-        balance: userData.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (userData.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = userData.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', withdrawal.user_id);
+      await supabase.rpc('increment_user_withdrawable_wallet', {
+        user_id: withdrawal.user_id,
+        amount: withdrawal.amount
+      });
         
       console.error('Supabase withdrawal update error:', withdrawalUpdateError);
       return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
@@ -1489,19 +1271,10 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
     // Check if any rows were updated (withdrawal was actually pending)
     if (count === 0) {
       // Rollback user balance update
-      const rollbackData = { 
-        balance: userData.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (userData.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = userData.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', withdrawal.user_id);
+      await supabase.rpc('increment_user_withdrawable_wallet', {
+        user_id: withdrawal.user_id,
+        amount: withdrawal.amount
+      });
         
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
@@ -1532,68 +1305,6 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       return res.status(404).json({ error: 'Pending withdrawal request not found' });
     }
 
-    // Refund the amount to user's balance
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance, recharge_balance')
-      .eq('id', withdrawal.user_id)
-      .single();
-
-    if (userError) {
-      console.error('Supabase user fetch error:', userError);
-      return res.status(500).json({ error: 'Failed to fetch user data' });
-    }
-
-    const withdrawalAmount = parseFloat(withdrawal.amount);
-    const newBalance = parseFloat(user.balance) + withdrawalAmount;
-    
-    // Log values for debugging
-    console.log('Refunding withdrawal amount to user balance:', {
-      userId: withdrawal.user_id,
-      currentBalance: user.balance,
-      currentRechargeBalance: user.recharge_balance,
-      withdrawalAmount: withdrawal.amount,
-      calculatedNewBalance: newBalance,
-      typeofCurrentBalance: typeof user.balance,
-      typeofWithdrawalAmount: typeof withdrawal.amount,
-      typeofNewBalance: typeof newBalance
-    });
-
-    // Update user balance
-    const updateData = { 
-      balance: newBalance
-    };
-    
-    const { data: updateDataResult, error: updateError } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', withdrawal.user_id)
-      .select();
-
-    console.log('Supabase update response:', {
-      data: updateData,
-      error: updateError
-    });
-
-    if (updateError) {
-      console.error('Supabase balance update error:', updateError);
-      return res.status(500).json({ 
-        error: 'Failed to update user balance: ' + updateError.message,
-        details: {
-          userId: withdrawal.user_id,
-          currentBalance: user.balance,
-          withdrawalAmount: withdrawal.amount,
-          newBalance: newBalance
-        }
-      });
-    }
-    
-    // Log successful update
-    console.log('User balance updated successfully:', {
-      userId: withdrawal.user_id,
-      newBalance: newBalance
-    });
-
     // Update withdrawal status
     const { error: withdrawalUpdateError, count } = await supabase
       .from('withdrawals')
@@ -1606,47 +1317,16 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
 
     if (withdrawalUpdateError) {
       console.error('Supabase withdrawal update error:', withdrawalUpdateError);
-      // Rollback user balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', withdrawal.user_id);
-      
       return res.status(500).json({ error: 'Failed to update withdrawal status: ' + withdrawalUpdateError.message });
     }
 
     // Check if any rows were updated (withdrawal was actually pending)
     if (count === 0) {
-      // Rollback user balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
-      }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', withdrawal.user_id);
-      
       return res.status(400).json({ error: 'Withdrawal request is no longer pending or was already processed' });
     }
 
     res.json({
-      message: 'Withdrawal rejected successfully',
-      newBalance
+      message: 'Withdrawal rejected successfully'
     });
   } catch (error) {
     console.error('Withdrawal rejection error:', error);
@@ -1698,7 +1378,7 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     // Get user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('balance, recharge_balance')
+      .select('withdrawable_wallet')
       .eq('id', userId)
       .single();
 
@@ -1708,43 +1388,22 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
 
     // Calculate new balance
     const adjustmentAmount = parseFloat(amount);
-    const newBalance = parseFloat(user.balance) + adjustmentAmount;
-    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + adjustmentAmount;
     
-    // Log values for debugging
-    console.log('Adjusting user balance:', {
-      userId: userId,
-      currentBalance: user.balance,
-      currentRechargeBalance: user.recharge_balance,
-      adjustmentAmount: amount,
-      calculatedNewBalance: newBalance,
-      calculatedNewRechargeBalance: newRechargeBalance,
-      typeofCurrentBalance: typeof user.balance,
-      typeofAdjustmentAmount: typeof amount,
-      typeofNewBalance: typeof newBalance,
-      reason: reason
-    });
-
-    // Update user balance
-    const updateData = { 
-      balance: newBalance
-    };
-    
-    // Only update recharge_balance if it exists in the table
-    if (user.recharge_balance !== undefined) {
-      updateData.recharge_balance = newRechargeBalance;
+    let updateError;
+    if (adjustmentAmount >= 0) {
+      // Adding to balance
+      updateError = await supabase.rpc('increment_user_withdrawable_wallet', {
+        user_id: userId,
+        amount: adjustmentAmount
+      });
+    } else {
+      // Subtracting from balance
+      const result = await supabase.rpc('decrement_user_withdrawable_wallet', {
+        user_id: userId,
+        amount: Math.abs(adjustmentAmount)
+      });
+      updateError = result.error;
     }
-    
-    const { data: updateDataResult, error: updateError } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', userId)
-      .select();
-
-    console.log('Supabase update response:', {
-      data: updateData,
-      error: updateError
-    });
 
     if (updateError) {
       console.error('Supabase balance update error:', updateError);
@@ -1752,18 +1411,10 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
         error: 'Failed to update user balance: ' + updateError.message,
         details: {
           userId: userId,
-          currentBalance: user.balance,
-          adjustmentAmount: amount,
-          newBalance: newBalance
+          adjustmentAmount: amount
         }
       });
     }
-    
-    // Log successful update
-    console.log('User balance updated successfully:', {
-      userId: userId,
-      newBalance: newBalance
-    });
 
     // Record balance adjustment
     const { error: recordError } = await supabase
@@ -1781,26 +1432,25 @@ app.post('/api/admin/user/balance-adjust', authenticateAdmin, async (req, res) =
     if (recordError) {
       console.error('Supabase balance adjustment record error:', recordError);
       // Rollback user balance update
-      const rollbackData = { 
-        balance: user.balance
-      };
-      
-      // Only rollback recharge_balance if it exists in the table
-      if (user.recharge_balance !== undefined) {
-        rollbackData.recharge_balance = user.recharge_balance;
+      if (adjustmentAmount >= 0) {
+        // Rollback addition
+        await supabase.rpc('decrement_user_withdrawable_wallet', {
+          user_id: userId,
+          amount: adjustmentAmount
+        });
+      } else {
+        // Rollback subtraction
+        await supabase.rpc('increment_user_withdrawable_wallet', {
+          user_id: userId,
+          amount: Math.abs(adjustmentAmount)
+        });
       }
-      
-      await supabase
-        .from('users')
-        .update(rollbackData)
-        .eq('id', userId);
       
       return res.status(500).json({ error: 'Failed to record balance adjustment: ' + recordError.message });
     }
 
     res.json({
-      message: 'User balance adjusted successfully',
-      newBalance
+      message: 'User balance adjusted successfully'
     });
   } catch (error) {
     console.error('Balance adjustment error:', error);
@@ -1820,9 +1470,11 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
         plan_id,
         amount,
         status,
-        days_left
+        days_left,
+        users (id, name, referred_by)
       `)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .order('id');
 
     if (investmentsError) {
       console.error('Error fetching investments:', investmentsError);
@@ -1851,19 +1503,18 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
 
     for (const investment of investments) {
       // Only distribute profit if days_left is greater than 0
-      // and days_left is less than or equal to duration_days (to prevent overpayment)
       if (investment.days_left > 0) {
         const dailyIncome = planIncomeMap[investment.plan_id];
         
         if (dailyIncome && dailyIncome > 0) {
-          // Add daily income to user's balance
-          const { error: updateError } = await supabase.rpc('increment_user_balance', {
+          // Add daily income to user's product revenue wallet
+          const { error: updateUserError } = await supabase.rpc('increment_user_product_revenue_wallet', {
             user_id: investment.user_id,
             amount: dailyIncome
           });
 
-          if (updateError) {
-            console.error(`Error updating balance for user ${investment.user_id}:`, updateError);
+          if (updateUserError) {
+            console.error(`Error updating product revenue wallet for user ${investment.user_id}:`, updateUserError);
             // Continue with other investments even if one fails
             continue;
           }
@@ -1893,6 +1544,118 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
           console.log(`Successfully recorded daily profit for user ${investment.user_id}, investment ${investment.id}, amount ${dailyIncome}`);
           console.log(`Insert result:`, insertData);
 
+          // Process commissions for uplines
+          if (investment.users && investment.users.referred_by) {
+            // Get upline users (Level 1, Level 2, Level 3)
+            const level1UplineId = investment.users.referred_by;
+            
+            // Get Level 1 upline details
+            const { data: level1Upline, error: level1Error } = await supabase
+              .from('users')
+              .select('id, referred_by')
+              .eq('id', level1UplineId)
+              .single();
+
+            if (!level1Error && level1Upline) {
+              // Level 1 commission (30% of daily income)
+              const level1Commission = dailyIncome * 0.30;
+              
+              // Add Level 1 commission to withdrawable wallet
+              const { error: updateLevel1Error } = await supabase.rpc('increment_user_withdrawable_wallet', {
+                user_id: level1Upline.id,
+                amount: level1Commission
+              });
+
+              if (!updateLevel1Error) {
+                // Record commission in daily_profits table
+                await supabase
+                  .from('daily_profits')
+                  .insert([
+                    {
+                      user_id: level1Upline.id,
+                      investment_id: investment.id,
+                      amount: level1Commission,
+                      processed_date: new Date().toISOString()
+                    }
+                  ]);
+              }
+
+              // Process Level 2 if exists
+              if (level1Upline.referred_by) {
+                const level2UplineId = level1Upline.referred_by;
+                
+                // Get Level 2 upline details
+                const { data: level2Upline, error: level2Error } = await supabase
+                  .from('users')
+                  .select('id, referred_by')
+                  .eq('id', level2UplineId)
+                  .single();
+
+                if (!level2Error && level2Upline) {
+                  // Level 2 commission (2% of daily income)
+                  const level2Commission = dailyIncome * 0.02;
+                  
+                  // Add Level 2 commission to withdrawable wallet
+                  const { error: updateLevel2Error } = await supabase.rpc('increment_user_withdrawable_wallet', {
+                    user_id: level2Upline.id,
+                    amount: level2Commission
+                  });
+
+                  if (!updateLevel2Error) {
+                    // Record commission in daily_profits table
+                    await supabase
+                      .from('daily_profits')
+                      .insert([
+                        {
+                          user_id: level2Upline.id,
+                          investment_id: investment.id,
+                          amount: level2Commission,
+                          processed_date: new Date().toISOString()
+                        }
+                      ]);
+                  }
+
+                  // Process Level 3 if exists
+                  if (level2Upline.referred_by) {
+                    const level3UplineId = level2Upline.referred_by;
+                    
+                    // Get Level 3 upline details
+                    const { data: level3Upline, error: level3Error } = await supabase
+                      .from('users')
+                      .select('id')
+                      .eq('id', level3UplineId)
+                      .single();
+
+                    if (!level3Error && level3Upline) {
+                      // Level 3 commission (1% of daily income)
+                      const level3Commission = dailyIncome * 0.01;
+                      
+                      // Add Level 3 commission to withdrawable wallet
+                      const { error: updateLevel3Error } = await supabase.rpc('increment_user_withdrawable_wallet', {
+                        user_id: level3Upline.id,
+                        amount: level3Commission
+                      });
+
+                      if (!updateLevel3Error) {
+                        // Record commission in daily_profits table
+                        await supabase
+                          .from('daily_profits')
+                          .insert([
+                            {
+                              user_id: level3Upline.id,
+                              investment_id: investment.id,
+                              amount: level3Commission,
+                              processed_date: new Date().toISOString()
+                            }
+                          ]);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
           // Decrease days_left by 1
           const { error: updateInvestmentError } = await supabase
             .from('investments')
@@ -1905,6 +1668,30 @@ app.post('/api/admin/daily-recycle', authenticateAdmin, async (req, res) => {
             console.error(`Error updating investment ${investment.id}:`, updateInvestmentError);
             // Continue with other investments even if one fails
             continue;
+          }
+
+          // Check if investment has completed its cycle
+          if (investment.days_left - 1 === 0) {
+            // Move total invested amount + total profit to withdrawable wallet
+            const totalAmount = investment.amount + (dailyIncome * investment.days_left);
+            
+            // Update investment status to completed
+            await supabase
+              .from('investments')
+              .update({ 
+                status: 'completed'
+              })
+              .eq('id', investment.id);
+
+            // Add total amount to user's withdrawable wallet
+            const { error: updateWalletError } = await supabase.rpc('increment_user_withdrawable_wallet', {
+              user_id: investment.user_id,
+              amount: totalAmount
+            });
+
+            if (updateWalletError) {
+              console.error(`Error updating withdrawable wallet for user ${investment.user_id}:`, updateWalletError);
+            }
           }
 
           processedCount++;

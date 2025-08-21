@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   mobile VARCHAR(20) UNIQUE NOT NULL,
-  balance DECIMAL(10, 2) DEFAULT 0.00,
+  product_revenue_wallet DECIMAL(10, 2) DEFAULT 0.00,
+  withdrawable_wallet DECIMAL(10, 2) DEFAULT 0.00,
   is_admin BOOLEAN DEFAULT FALSE,
   referred_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
@@ -113,34 +114,44 @@ CREATE INDEX IF NOT EXISTS idx_daily_profits_user_id ON daily_profits(user_id);
 CREATE INDEX IF NOT EXISTS idx_daily_profits_investment_id ON daily_profits(investment_id);
 CREATE INDEX IF NOT EXISTS idx_daily_profits_processed_date ON daily_profits(processed_date);
 
--- Create function to increment user balance
-CREATE OR REPLACE FUNCTION increment_user_balance(user_id INTEGER, amount DECIMAL)
-RETURNS VOID AS $$
+-- Create function to increment user product revenue wallet
+CREATE OR REPLACE FUNCTION increment_user_product_revenue_wallet(user_id INTEGER, amount DECIMAL)
+RETURNS VOID AS $
 BEGIN
   UPDATE users
-  SET balance = balance + amount
+  SET product_revenue_wallet = product_revenue_wallet + amount
   WHERE id = user_id;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
--- Create function to decrement user balance
-CREATE OR REPLACE FUNCTION decrement_user_balance(user_id INTEGER, amount DECIMAL)
-RETURNS BOOLEAN AS $$
+-- Create function to increment user withdrawable wallet
+CREATE OR REPLACE FUNCTION increment_user_withdrawable_wallet(user_id INTEGER, amount DECIMAL)
+RETURNS VOID AS $
+BEGIN
+  UPDATE users
+  SET withdrawable_wallet = withdrawable_wallet + amount
+  WHERE id = user_id;
+END;
+$ LANGUAGE plpgsql;
+
+-- Create function to decrement user withdrawable wallet
+CREATE OR REPLACE FUNCTION decrement_user_withdrawable_wallet(user_id INTEGER, amount DECIMAL)
+RETURNS BOOLEAN AS $
 DECLARE
   current_balance DECIMAL;
 BEGIN
-  SELECT balance INTO current_balance FROM users WHERE id = user_id;
+  SELECT withdrawable_wallet INTO current_balance FROM users WHERE id = user_id;
   
   IF current_balance >= amount THEN
     UPDATE users
-    SET balance = balance - amount
+    SET withdrawable_wallet = withdrawable_wallet - amount
     WHERE id = user_id;
     RETURN TRUE;
   ELSE
     RETURN FALSE;
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 -- Update existing investments to have days_left value based on their plan
 -- This is a one-time migration script to populate the days_left column for existing investments
