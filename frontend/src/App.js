@@ -11,12 +11,17 @@ import AdminPanel from './components/AdminPanel';
 function App() {
   const [, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral', 'admin'
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+  const [view, setView] = useState('login'); // 'login', 'admin-login', 'register', 'dashboard', 'plans', 'withdraw', 'recharge', 'referral', 'admin'
+  const [loginFormData, setLoginFormData] = useState({
+    mobile: '',
+    password: ''
+  });
+  const [registerFormData, setRegisterFormData] = useState({
+    username: '',
+    mobile: '',
     password: '',
-    mobile: ''
+    confirmPassword: '',
+    referralCode: ''
   });
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState('');
@@ -36,9 +41,16 @@ function App() {
     }
   }, []);
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
+  const handleLoginInputChange = (e) => {
+    setLoginFormData({
+      ...loginFormData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleRegisterInputChange = (e) => {
+    setRegisterFormData({
+      ...registerFormData,
       [e.target.name]: e.target.value
     });
   };
@@ -50,7 +62,7 @@ function App() {
     setLoading(true);
     
     try {
-      const response = await axios.post('/api/register', formData);
+      const response = await axios.post('/api/register', registerFormData);
       setToken(response.data.token);
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
@@ -72,10 +84,7 @@ function App() {
     setLoading(true);
     
     try {
-      const response = await axios.post('/api/login', {
-        identifier: formData.email, // This can be mobile or email
-        password: formData.password
-      });
+      const response = await axios.post('/api/login', loginFormData);
       
       setToken(response.data.token);
       setUser(response.data.user);
@@ -86,6 +95,28 @@ function App() {
       fetchUserData(response.data.token);
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    
+    try {
+      const response = await axios.post('/api/admin/login', loginFormData);
+      
+      setToken(response.data.token);
+      setUser(response.data.user);
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      setSuccess('Admin login successful!');
+      setView('admin');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Admin login failed');
     } finally {
       setLoading(false);
     }
@@ -111,11 +142,16 @@ function App() {
     setUser(null);
     setUserData(null);
     setView('login');
-    setFormData({
-      name: '',
-      email: '',
+    setLoginFormData({
+      mobile: '',
+      password: ''
+    });
+    setRegisterFormData({
+      username: '',
+      mobile: '',
       password: '',
-      mobile: ''
+      confirmPassword: '',
+      referralCode: ''
     });
   };
 
@@ -166,11 +202,11 @@ function App() {
           <form onSubmit={handleLogin}>
             <div className="form-group">
               <input
-                type="text"
-                name="identifier"
-                placeholder="Mobile Number or Email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                type="tel"
+                name="mobile"
+                placeholder="Mobile Number"
+                value={loginFormData.mobile}
+                onChange={handleLoginInputChange}
                 required
               />
             </div>
@@ -179,8 +215,8 @@ function App() {
                 type="password"
                 name="password"
                 placeholder="Password"
-                value={formData.password}
-                onChange={handleInputChange}
+                value={loginFormData.password}
+                onChange={handleLoginInputChange}
                 required
               />
             </div>
@@ -188,10 +224,57 @@ function App() {
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
+          <div className="admin-login-link">
+            <button onClick={() => setView('admin-login')}>Admin Login</button>
+          </div>
         </div>
         <div className="auth-footer">
           Don't have an account?{' '}
           <button onClick={() => setView('register')}>Register</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAdminLoginForm = () => (
+    <div className="auth-page">
+      <div className="auth-form-container">
+        <div className="auth-header">
+          <h1>InvestPro Admin</h1>
+          <p>Administrator Portal</p>
+        </div>
+        <div className="auth-form">
+          <h2>Admin Login</h2>
+          {error && <div className="error">{error}</div>}
+          {success && <div className="success">{success}</div>}
+          <form onSubmit={handleAdminLogin}>
+            <div className="form-group">
+              <input
+                type="tel"
+                name="mobile"
+                placeholder="Admin Mobile: 9999999999"
+                value={loginFormData.mobile}
+                onChange={handleLoginInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="password"
+                name="password"
+                placeholder="Admin Password: Admin123!"
+                value={loginFormData.password}
+                onChange={handleLoginInputChange}
+                required
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Logging in...' : 'Admin Login'}
+            </button>
+          </form>
+        </div>
+        <div className="auth-footer">
+          <button onClick={() => setView('login')}>User Login</button>
         </div>
       </div>
     </div>
@@ -212,20 +295,10 @@ function App() {
             <div className="form-group">
               <input
                 type="text"
-                name="name"
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleInputChange}
+                name="username"
+                placeholder="Username"
+                value={registerFormData.username}
+                onChange={handleRegisterInputChange}
                 required
               />
             </div>
@@ -234,8 +307,8 @@ function App() {
                 type="tel"
                 name="mobile"
                 placeholder="Mobile Number"
-                value={formData.mobile}
-                onChange={handleInputChange}
+                value={registerFormData.mobile}
+                onChange={handleRegisterInputChange}
                 required
               />
             </div>
@@ -244,9 +317,28 @@ function App() {
                 type="password"
                 name="password"
                 placeholder="Password"
-                value={formData.password}
-                onChange={handleInputChange}
+                value={registerFormData.password}
+                onChange={handleRegisterInputChange}
                 required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={registerFormData.confirmPassword}
+                onChange={handleRegisterInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <input
+                type="text"
+                name="referralCode"
+                placeholder="Referral Code (Optional)"
+                value={registerFormData.referralCode}
+                onChange={handleRegisterInputChange}
               />
             </div>
             <button type="submit" disabled={loading}>
@@ -319,6 +411,7 @@ function App() {
         // Non-authenticated views
         <>
           {view === 'login' && renderLoginForm()}
+          {view === 'admin-login' && renderAdminLoginForm()}
           {view === 'register' && renderRegisterForm()}
         </>
       ) : (
@@ -336,8 +429,4 @@ function App() {
   );
 }
 
-export default App;// Trigger frontend redeploy for category feature
-// Trigger frontend redeploy for category display
-// Trigger frontend redeploy for financial features
-// Trigger frontend redeploy for form fix
-// Trigger frontend redeploy for eslint fix
+export default App;

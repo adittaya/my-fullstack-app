@@ -21,8 +21,10 @@ module.exports = async function addReferredByColumn(supabase) {
       return true;
     }
     
-    console.log('referred_by column does not exist. In a real Supabase environment, you would need to add this column via the Supabase dashboard or SQL.');
-    console.log('For now, we will handle this gracefully in the API by returning empty results.');
+    // In a real Supabase environment, you would need to add this column via the Supabase dashboard or SQL.
+    // For now, we'll log that this column should be added.
+    console.log('referred_by column does not exist. Please add it to the users table with the following SQL:');
+    console.log('ALTER TABLE users ADD COLUMN referred_by INTEGER REFERENCES users(id);');
     
     return true;
   } catch (err) {

@@ -93,13 +93,28 @@ const generateFakeWithdrawal = () => {
 // Register endpoint
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, email, password, mobile } = req.body;
+    const { username, mobile, password, confirmPassword, referralCode } = req.body;
 
-    // Check if user already exists
+    // Validate required fields
+    if (!username || !mobile || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    // Validate mobile number (10 digits)
+    if (!/^\d{10}$/.test(mobile)) {
+      return res.status(400).json({ error: 'Mobile number must be 10 digits' });
+    }
+
+    // Check if user already exists with this mobile
     const { data: existingUsers, error: fetchError } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('mobile', mobile)
       .limit(1);
 
     if (fetchError) {
@@ -108,7 +123,29 @@ app.post('/api/register', async (req, res) => {
     }
 
     if (existingUsers.length > 0) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+      return res.status(400).json({ error: 'User already exists with this mobile number' });
+    }
+
+    // Validate referral code if provided
+    let referredById = null;
+    if (referralCode) {
+      // Check if referral code is a valid user ID
+      const { data: referrer, error: referrerError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', parseInt(referralCode))
+        .limit(1);
+
+      if (referrerError) {
+        console.error('Supabase referrer check error:', referrerError);
+        return res.status(500).json({ error: 'Database error during referral check' });
+      }
+
+      if (referrer.length === 0) {
+        return res.status(400).json({ error: 'Invalid referral code' });
+      }
+
+      referredById = parseInt(referralCode);
     }
 
     // Insert new user with initial balance of 0
@@ -116,12 +153,13 @@ app.post('/api/register', async (req, res) => {
       .from('users')
       .insert([
         {
-          name,
-          email,
+          name: username,
+          email: `${mobile}@investpro.com`, // Generate email from mobile
           password, // In a real app, you should hash the password
           mobile,
           balance: 0,
           is_admin: false, // Default to false for new users
+          referred_by: referredById,
           created_at: new Date()
         }
       ])
@@ -135,7 +173,7 @@ app.post('/api/register', async (req, res) => {
 
     // Create JWT token
     const token = jwt.sign(
-      { id: data.id, name: data.name, email: data.email },
+      { id: data.id, name: data.name, email: data.email, is_admin: data.is_admin },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -146,7 +184,8 @@ app.post('/api/register', async (req, res) => {
       user: {
         id: data.id,
         name: data.name,
-        email: data.email
+        email: data.email,
+        is_admin: data.is_admin
       }
     });
   } catch (error) {
@@ -158,34 +197,24 @@ app.post('/api/register', async (req, res) => {
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier can be email or mobile
+    const { mobile, password } = req.body;
 
     // Validate required fields
-    if (!identifier || !password) {
-      return res.status(400).json({ error: 'Mobile/Email and password are required' });
+    if (!mobile || !password) {
+      return res.status(400).json({ error: 'Mobile number and password are required' });
     }
 
-    let userQuery;
-    
-    // Check if identifier is mobile (numeric) or email
-    if (/^\d+$/.test(identifier)) {
-      // It's a mobile number
-      userQuery = supabase
-        .from('users')
-        .select('id, name, email, password, is_admin')
-        .eq('mobile', identifier)
-        .limit(1);
-    } else {
-      // It's an email
-      userQuery = supabase
-        .from('users')
-        .select('id, name, email, password, is_admin')
-        .eq('email', identifier)
-        .limit(1);
+    // Validate mobile number (10 digits)
+    if (!/^\d{10}$/.test(mobile)) {
+      return res.status(400).json({ error: 'Mobile number must be 10 digits' });
     }
 
-    // Find user by mobile or email
-    const { data: users, error } = await userQuery;
+    // Find user by mobile number
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, name, email, password, is_admin')
+      .eq('mobile', mobile)
+      .limit(1);
 
     if (error) {
       console.error('Supabase fetch error:', error);
@@ -193,14 +222,14 @@ app.post('/api/login', async (req, res) => {
     }
 
     if (users.length === 0) {
-      return res.status(400).json({ error: 'Invalid mobile/email or password' });
+      return res.status(400).json({ error: 'Invalid mobile number or password' });
     }
 
     const user = users[0];
 
     // Check password (in a real app, you should compare hashed passwords)
     if (user.password !== password) {
-      return res.status(400).json({ error: 'Invalid mobile/email or password' });
+      return res.status(400).json({ error: 'Invalid mobile number or password' });
     }
 
     // Create JWT token
@@ -1411,16 +1440,10 @@ app.post('/api/admin/withdrawal/:id/approve', authenticateAdmin, async (req, res
 
     const withdrawalAmount = parseFloat(withdrawal.amount);
     const newBalance = parseFloat(userData.balance) - withdrawalAmount;
-    const newRechargeBalance = (userData.recharge_balance !== undefined ? parseFloat(userData.recharge_balance) : parseFloat(userData.balance)) - withdrawalAmount;
 
     const updateData = { 
       balance: newBalance
     };
-    
-    // Only update recharge_balance if it exists in the table
-    if (userData.recharge_balance !== undefined) {
-      updateData.recharge_balance = newRechargeBalance;
-    }
     
     const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
@@ -1523,7 +1546,6 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
 
     const withdrawalAmount = parseFloat(withdrawal.amount);
     const newBalance = parseFloat(user.balance) + withdrawalAmount;
-    const newRechargeBalance = (user.recharge_balance !== undefined ? parseFloat(user.recharge_balance) : parseFloat(user.balance)) + withdrawalAmount;
     
     // Log values for debugging
     console.log('Refunding withdrawal amount to user balance:', {
@@ -1532,7 +1554,6 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
       currentRechargeBalance: user.recharge_balance,
       withdrawalAmount: withdrawal.amount,
       calculatedNewBalance: newBalance,
-      calculatedNewRechargeBalance: newRechargeBalance,
       typeofCurrentBalance: typeof user.balance,
       typeofWithdrawalAmount: typeof withdrawal.amount,
       typeofNewBalance: typeof newBalance
@@ -1542,11 +1563,6 @@ app.post('/api/admin/withdrawal/:id/reject', authenticateAdmin, async (req, res)
     const updateData = { 
       balance: newBalance
     };
-    
-    // Only update recharge_balance if it exists in the table
-    if (user.recharge_balance !== undefined) {
-      updateData.recharge_balance = newRechargeBalance;
-    }
     
     const { data: updateDataResult, error: updateError } = await supabase
       .from('users')
@@ -1931,6 +1947,87 @@ app.get('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
   } catch (error) {
     console.error('User details fetch error:', error);
     res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
+
+// Admin login endpoint
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { mobile, password } = req.body;
+
+    // Validate required fields
+    if (!mobile || !password) {
+      return res.status(400).json({ error: 'Mobile number and password are required' });
+    }
+
+    // Check admin credentials
+    if (mobile === '9999999999' && password === 'Admin123!') {
+      // Create admin user if it doesn't exist
+      const { data: existingAdmin, error: fetchError } = await supabase
+        .from('users')
+        .select('id, name, email, is_admin')
+        .eq('mobile', '9999999999')
+        .limit(1);
+
+      let adminUser;
+      if (fetchError || existingAdmin.length === 0) {
+        // Create admin user
+        const { data: newAdmin, error: insertError } = await supabase
+          .from('users')
+          .insert([
+            {
+              name: 'Admin User',
+              email: 'admin@investpro.com',
+              password: 'Admin123!',
+              mobile: '9999999999',
+              balance: 0,
+              is_admin: true,
+              created_at: new Date()
+            }
+          ])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Supabase admin insert error:', insertError);
+          return res.status(500).json({ error: 'Failed to create admin user' });
+        }
+
+        adminUser = newAdmin;
+      } else {
+        adminUser = existingAdmin[0];
+        // Ensure admin flag is set
+        if (!adminUser.is_admin) {
+          await supabase
+            .from('users')
+            .update({ is_admin: true })
+            .eq('id', adminUser.id);
+        }
+      }
+
+      // Create JWT token
+      const token = jwt.sign(
+        { id: adminUser.id, name: adminUser.name, email: adminUser.email, is_admin: true },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.json({
+        message: 'Admin login successful',
+        token,
+        user: {
+          id: adminUser.id,
+          name: adminUser.name,
+          email: adminUser.email,
+          is_admin: true
+        }
+      });
+    }
+
+    return res.status(401).json({ error: 'Invalid admin credentials' });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
